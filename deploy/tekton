@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+#
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2024 Guillaume Tucker
+
+set -eo pipefail
+
+URL="https://storage.googleapis.com/tekton-releases/"
+
+echo "Deploying pipelines..."
+kubectl apply -f "$URL"pipeline/previous/v0.64.0/release.yaml
+
+echo "Deploying dashboard..."
+kubectl apply -f "$URL"dashboard/previous/v0.51.0/release.yaml
+
+echo "Waiting for deployments..."
+kubectl wait -n tekton-pipelines deployment \
+    tekton-pipelines-webhook --for condition=Available --timeout 10m
+kubectl wait -n tekton-pipelines deployment \
+    tekton-dashboard --for condition=Available --timeout 10m
+
+kubectl get all -n tekton-pipelines
+
+exit 0
