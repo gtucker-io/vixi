@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+#
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2024 Guillaume Tucker
+
+set -eo pipefail
+
+PROJECT="${1}"
+CLUSTER="${2}"
+LOCATION="${3}"
+
+[ -n "$PROJECT" ] && [ -n "$CLUSTER" ] && [ "$LOCATION" ] || {
+    echo "Usage: $0 PROJECT CLUSTER LOCATION"
+}
+
+echo "Project:   $PROJECT"
+echo "Cluster:   $CLUSTER"
+echo "Location:  $LOCATION"
+
+found_cluster=$(
+    gcloud container clusters list --filter="$CLUSTER" --format="value(NAME)"
+)
+
+if [ -n "$found_cluster" ]; then
+    echo "Cluster already exists, not creating."
+else
+    echo "Creating cluster with default node pool..."
+    gcloud container clusters create "${CLUSTER}" \
+        --location="${LOCATION}" \
+        --workload-pool="${PROJECT}".svc.id.goog \
+        --workload-metadata=GKE_METADATA \
+        --enable-nested-virtualization \
+        --image-type=UBUNTU_CONTAINERD \
+        --machine-type=n1-standard-2 \
+        --disk-type=pd-standard \
+        --num-nodes=1
+fi
+
+echo "Getting cluster credentials..."
+gcloud container clusters get-credentials "${CLUSTER}" --location "${LOCATION}"
+
+found_pool=$(
+  gcloud container node-pools list \
+      --cluster="$CLUSTER" --location="$LOCATION" \
+      --filter=worker-pool --format="value(NAME)"
+)
+
+if [ -n "$found_pool" ]; then
+    echo "Worker pool already exists, not creating."
+else
+    echo "Creating worker pool..."
+        gcloud container node-pools create worker-pool \
+            --cluster="${CLUSTER}" \
+            --location="${LOCATION}" \
+            --workload-metadata=GKE_METADATA \
+            --enable-nested-virtualization \
+            --image-type=UBUNTU_CONTAINERD \
+            --machine-type=n2-highmem-4 \
+            --disk-type=pd-ssd \
+            --disk-size=100 \
+            --enable-autoscaling \
+            --total-min-nodes=0 \
+            --total-max-nodes=9 \
+            --num-nodes=0 \
+            --node-labels=vkci/worker=true \
+            --location-policy=ANY
+fi
+
+kubectl get nodes
+
+exit 0
