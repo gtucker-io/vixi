@@ -1,0 +1,130 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2024 Guillaume Tucker
+
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: kbuild-init
+  namespace: vixi
+spec:
+  workspaces:
+  - name: sandbox
+  steps:
+  - name: directory
+    image: alpine:3.20
+    workingDir: $(workspaces.sandbox.path)
+    script: |
+      set -euo pipefail
+
+      mkdir -p kbuild
+      chown 1000:1000 kbuild
+      ls -l
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: kbuild-mirror
+  namespace: vixi
+spec:
+  workspaces:
+  - name: sandbox
+  params:
+  - name: tree
+    default: torvalds
+  - name: url
+    default: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+  steps:
+  - name: mirror
+    image: alpine/git:v2.45.2
+    workingDir: $(workspaces.sandbox.path)/mirror
+    script: |
+      set -eo pipefail
+
+      tree=$(params.tree)
+      url=$(params.url)
+      echo "Tree: $(params.tree)"
+      echo "URL:  $(params.url)"
+
+      echo "Current mirrors:"
+      find . -type d -name "*.git" | xargs du -hs
+
+      if [ -d linux.git ]; then
+          cd linux.git
+          pwd
+          git remote update
+          git branch
+          git log -n1
+          cd - >/dev/null
+      else
+          git clone --mirror --verbose \
+            https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+      fi
+
+      [ -d "$tree".git ] || {
+          git clone --mirror --verbose --reference=linux.git "$url" "$tree".git
+      }
+
+      cd "$tree".git
+      pwd
+      git remote set-url origin "$url"
+      git remote update --prune
+      git branch
+      git log -n1
+      du -hs
+      cd - >/dev/null
+      df -h $(workspaces.sandbox.path)
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: kbuild
+  namespace: vixi
+spec:
+  workspaces:
+  - name: sandbox
+  steps:
+  - name: checkout
+    image: alpine/git:v2.45.2
+    workingDir: $(workspaces.sandbox.path)/kbuild
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+    script: |
+      set -euo pipefail
+
+      tree=torvalds
+      url=https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+      revision=v6.11
+
+      mirror=$(workspaces.sandbox.path)/mirror/"$tree".git
+      if [ ! -d "$tree" ]; then
+          git clone --reference-if-able="$mirror" -v --depth=1 "$url" "$tree"
+      fi
+
+      cd "$tree"
+      git remote -v
+      git branch -a
+      git fetch --tags origin "$revision"
+      git checkout FETCH_HEAD
+      git log -n1
+      du -hs .git
+
+  - name: build
+    image: registry.gitlab.com/gtucker/korg/gcc:14.2-x86-x86
+    workingDir: $(workspaces.sandbox.path)/kbuild
+    script: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      tree=torvalds
+      arch=x86_64
+      compiler=gcc-14.2
+
+      cd "$tree"
+      bdir="build/$arch/$compiler"
+      mkdir -p "$bdir"
+      make O="$bdir" defconfig
+      make O="$bdir" bzImage -j$(nproc)
+      make O="$bdir" modules -j$(nproc)
+      ls -l "$bdir"/arch/"$arch"/boot/bzImage

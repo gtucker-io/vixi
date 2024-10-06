@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2024 Guillaume Tucker
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kbuild-sandbox
+  namespace: vixi
+  annotations:
+    user.custom.annotation/storage.thick-provisioned: "true"
+spec:
+  accessModes:
+  - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 100Gi

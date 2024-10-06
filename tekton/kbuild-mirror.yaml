@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2024 Guillaume Tucker
+
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: kbuild-mirror-
+  namespace: vixi
+spec:
+  taskRef:
+    name: kbuild-mirror
+  timeout: "2h0m0s"
+  workspaces:
+  - name: sandbox
+    persistentVolumeClaim:
+      claimName: kbuild-sandbox
