@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+#
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2024 Guillaume Tucker
+
+set -eo pipefail
+
+echo "Deploying Kubernetes resources..."
+kubectl apply -f tekton/namespace.yaml
+kubectl apply -f tekton/volumes.yaml
+
+echo "Deploying Tekton tasks and pipelines..."
+kubectl apply -f tekton/kbuild.yaml
+
+echo "Initialising resources..."
+kubectl create -f tekton/kbuild-init.yaml
+
+exit 0
