@@ -2,6 +2,9 @@
 #
 # Copyright (C) 2024 Guillaume Tucker
 
+# -----------------------------------------------------------------------------
+# Service Account
+
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -35,6 +38,10 @@ roleRef:
   kind: ClusterRole
   name: tekton-triggers-eventlistener-clusterroles
 ---
+
+# -----------------------------------------------------------------------------
+# mirror
+
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerTemplate
 metadata:
@@ -90,3 +97,87 @@ spec:
     - ref: kbuild-mirror-trigger-binding
     template:
       ref: kbuild-mirror-trigger-template
+---
+
+# -----------------------------------------------------------------------------
+# kbuild
+
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: kbuild-trigger-template
+  namespace: vixi
+spec:
+  params:
+  - name: tree
+  - name: url
+  - name: revision
+  - name: arch
+  - name: defconfig
+  - name: opts
+  - name: cc
+  - name: ccver
+  - name: ccarch
+  resourcetemplates:
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    metadata:
+      generateName: kbuild-$(tt.params.tree)-$(tt.params.revision)-
+    spec:
+      taskRef:
+        name: kbuild
+      podTemplate:
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: vixi/worker
+                  operator: In
+                  values: ["true"]
+      timeout: "1h0m0s"
+      workspaces:
+      - name: sandbox
+        persistentVolumeClaim:
+          claimName: kbuild-sandbox
+      params:
+      - {name: tree,       value: $(tt.params.tree)}
+      - {name: url,        value: $(tt.params.url)}
+      - {name: revision,   value: $(tt.params.revision)}
+      - {name: arch,       value: $(tt.params.arch)}
+      - {name: defconfig,  value: $(tt.params.defconfig)}
+      - {name: opts,       value: $(tt.params.opts)}
+      - {name: cc,         value: $(tt.params.cc)}
+      - {name: ccver,      value: $(tt.params.ccver)}
+      - {name: ccarch,     value: $(tt.params.ccarch)}
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: kbuild-trigger-binding
+  namespace: vixi
+spec:
+  params:
+  - {name: tree,       value: $(body.tree)}
+  - {name: url,        value: $(body.url)}
+  - {name: revision,   value: $(body.revision)}
+  - {name: arch,       value: $(body.arch)}
+  - {name: defconfig,  value: $(body.defconfig)}
+  - {name: opts,       value: $(body.opts)}
+  - {name: cc,         value: $(body.cc)}
+  - {name: ccver,      value: $(body.ccver)}
+  - {name: ccarch,     value: $(body.ccarch)}
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: kbuild-trigger-listener
+  namespace: vixi
+spec:
+  serviceAccountName: vixi-trigger-account
+  triggers:
+  - name: kbuild-trigger
+    bindings:
+    - ref: kbuild-trigger-binding
+    template:
+      ref: kbuild-trigger-template
