@@ -71,3 +71,33 @@ a given mirror, typically once a week.
 
 > **Note**: The per-tree build directories could be deleted at the same rate as
 > the mirror syncs, so probably once a week.
+
+## Usage
+
+Create a cluster in GKE, for example:
+
+```
+deploy/gke exp-001-430112 vixi-001 europe-west1-c
+```
+
+Deploy all the Kubernetes resources:
+
+```
+deploy/tekton
+deploy/vixi
+```
+
+Set up port forwarding for the event listener:
+
+```
+kubectl port-forward -n vixi service/el-kbuild-mirror-trigger-listener 8081:8080
+```
+
+Trigger a run:
+
+```
+curl -d '{\
+  "tree": "linux-next", \
+  "url": "https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git" \
+}' http://localhost:8081
+```
