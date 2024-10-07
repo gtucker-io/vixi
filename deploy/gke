@@ -30,11 +30,10 @@ else
         --location="${LOCATION}" \
         --workload-pool="${PROJECT}".svc.id.goog \
         --workload-metadata=GKE_METADATA \
-        --enable-nested-virtualization \
-        --image-type=UBUNTU_CONTAINERD \
-        --machine-type=n1-standard-2 \
+        --machine-type=e2-medium \
         --disk-type=pd-standard \
-        --num-nodes=1
+        --node-labels=vixi/default=true \
+        --num-nodes=3
 fi
 
 echo "Getting cluster credentials..."
@@ -49,21 +48,47 @@ found_pool=$(
 if [ -n "$found_pool" ]; then
     echo "Worker pool already exists, not creating."
 else
+    # ToDo: consider using c3d-standard-8-lssd with local workspace
     echo "Creating worker pool..."
         gcloud container node-pools create worker-pool \
             --cluster="${CLUSTER}" \
             --location="${LOCATION}" \
             --workload-metadata=GKE_METADATA \
-            --enable-nested-virtualization \
-            --image-type=UBUNTU_CONTAINERD \
-            --machine-type=n2-highmem-4 \
-            --disk-type=pd-ssd \
+            --machine-type=c3d-standard-4 \
+            --disk-type=pd-balanced \
             --disk-size=100 \
             --enable-autoscaling \
             --total-min-nodes=0 \
-            --total-max-nodes=9 \
+            --total-max-nodes=8 \
             --num-nodes=0 \
-            --node-labels=vkci/worker=true \
+            --node-labels=vixi/worker=true \
+            --location-policy=ANY
+fi
+
+found_pool=$(
+  gcloud container node-pools list \
+      --cluster="$CLUSTER" --location="$LOCATION" \
+      --filter=kvm-worker-pool --format="value(NAME)"
+)
+
+if [ -n "$found_pool" ]; then
+    echo "KVM worker pool already exists, not creating."
+else
+    echo "Creating worker pool..."
+        gcloud container node-pools create kvm-worker-pool \
+            --cluster="${CLUSTER}" \
+            --location="${LOCATION}" \
+            --workload-metadata=GKE_METADATA \
+            --enable-nested-virtualization \
+            --image-type=UBUNTU_CONTAINERD \
+            --machine-type=n2-highmem-2 \
+            --disk-type=pd-standard \
+            --disk-size=100 \
+            --enable-autoscaling \
+            --total-min-nodes=0 \
+            --total-max-nodes=8 \
+            --num-nodes=0 \
+            --node-labels=vixi/kvm-worker=true \
             --location-policy=ANY
 fi
 
