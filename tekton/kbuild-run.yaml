@@ -19,6 +19,13 @@ spec:
             - key: vixi/worker
               operator: In
               values: ["true"]
+  params:
+  - name: tree
+    value: torvalds
+  - name: url
+    value: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+  - name: revision
+    value: master
   timeout: "1h0m0s"
   workspaces:
   - name: sandbox

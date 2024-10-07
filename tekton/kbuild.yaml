@@ -83,6 +83,19 @@ metadata:
 spec:
   workspaces:
   - name: sandbox
+  params:
+  -  name: tree
+  -  name: url
+  -  name: revision
+  - {name: arch,       default: x86_64}
+  - {name: defconfig,  default: defconfig}
+  - {name: opts,       default: ''}
+  - {name: cc,         default: gcc}
+  - {name: ccver,      default: 14.2}
+  - {name: ccarch,     default: -x86}
+  - {name: registry,   default: registry.gitlab.com/gtucker/korg/}
+  - {name: bucket,     default: gs://vixi-sandbox}
+
   steps:
   - name: checkout
     image: alpine/git:v2.45.2
@@ -93,9 +106,12 @@ spec:
     script: |
       set -euo pipefail
 
-      tree=torvalds
-      url=https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
-      revision=v6.11
+      tree=$(params.tree)
+      url=$(params.url)
+      revision=$(params.revision)
+      echo "Tree:     $tree"
+      echo "URL:      $url"
+      echo "Revision: $revision"
 
       mirror=$(workspaces.sandbox.path)/mirror/"$tree".git
       if [ ! -d "$tree" ]; then
@@ -111,20 +127,27 @@ spec:
       du -hs .git
 
   - name: build
-    image: registry.gitlab.com/gtucker/korg/gcc:14.2-x86-x86
+    image: $(params.registry)$(params.cc):$(params.ccver)-x86$(params.ccarch)
     workingDir: $(workspaces.sandbox.path)/kbuild
     script: |
       #!/usr/bin/env bash
       set -euo pipefail
 
-      tree=torvalds
-      arch=x86_64
-      compiler=gcc-14.2
+      tree=$(params.tree)
+      arch=$(params.arch)
+      cc=$(params.cc)
+      ccver=$(params.ccver)
+      compiler="$cc"-"$ccver"
+      opts=$(params.opts)
+      echo "Tree:          $tree"
+      echo "Architecture:  $arch"
+      echo "Compiler:      $compiler"
+      echo "Options:       $opts"
 
       cd "$tree"
       bdir="build/$arch/$compiler"
       mkdir -p "$bdir"
-      make O="$bdir" defconfig
-      make O="$bdir" bzImage -j$(nproc)
-      make O="$bdir" modules -j$(nproc)
+      make O="$bdir" $opts defconfig
+      make O="$bdir" $opts bzImage -j$(nproc)
+      make O="$bdir" $opts modules -j$(nproc)
       ls -l "$bdir"/arch/"$arch"/boot/bzImage
