@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+#
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2024 Guillaume Tucker
+
+set -eo pipefail
+
+URL="https://github.com/kubevirt/"
+KV_URL="${URL}kubevirt/releases/download/"
+CDI_URL="${URL}containerized-data-importer/releases/download/"
+KVTKN_URL="${URL}kubevirt-tekton-tasks/releases/download/"
+
+echo "Deploying KubeVirt..."
+kubectl get namespaces -o name | grep "namespace/kubevirt" || {
+    kubectl create -f "$KV_URL"v1.3.1/kubevirt-operator.yaml
+    kubectl create -f "$KV_URL"v1.3.1/kubevirt-cr.yaml
+}
+
+echo "Deploying CDI..."
+kubectl get namespaces -o name | grep "namespace/cdi" || {
+    kubectl create -f "$CDI_URL"v1.60.3/cdi-operator.yaml
+    kubectl create -f "$CDI_URL"v1.60.3/cdi-cr.yaml
+}
+
+echo "Deploying KubeVirt Tekton tasks..."
+kubectl apply -n vixi -f "$KVTKN_URL"v0.22.0/kubevirt-tekton-tasks.yaml
+
+echo "Waiting for deployments..."
+kubectl wait -n kubevirt kv kubevirt --for condition=Available --timeout 10m
+
+exit 0
