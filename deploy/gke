@@ -36,6 +36,12 @@ else
         --num-nodes=3
 fi
 
+kubectl get nodes -o name | grep default-pool \
+| while read node; do
+    kubectl label "${node}" node-role.kubernetes.io/control-plane=true
+    kubectl label "${node}" node-role.kubernetes.io/master=true
+done
+
 echo "Getting cluster credentials..."
 gcloud container clusters get-credentials "${CLUSTER}" --location "${LOCATION}"
 
