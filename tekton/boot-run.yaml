@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2024 Guillaume Tucker
+
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  namespace: vixi
+  generateName: boot-run-
+  labels:
+    tekton.dev/pipeline: kbuild
+spec:
+  serviceAccountName: kubevirt-sa
+  pipelineRef:
+    name: boot
+  podTemplate:
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: vixi/kvm-worker
+              operator: In
+              values: ["true"]
+  params:
+  - name: vmName
+    value: "$(context.pipelineRun.name)-vm"
+  - name: privateKeySecretName
+    value: "$(context.pipelineRun.name)-private-key"
+  - name: publicKeySecretName
+    value: "$(context.pipelineRun.name)-public-key"
+  timeouts:
+    pipeline: "0h15m0s"
+    tasks: "0h10m0s"
+    finally: "0h5m0s"

@@ -1,0 +1,45 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2024 Guillaume Tucker
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubevirt-sa
+  namespace: vixi
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubevirt-cluster-role
+  namespace: vixi
+rules:
+- apiGroups: [""]
+  resources: [secrets]
+  verbs: [get, list, watch, create]
+- apiGroups: [kubevirt.io]
+  resources: [virtualmachines]
+  verbs: [get, list, watch, create, update, delete]
+- apiGroups: [kubevirt.io]
+  resources: [virtualmachineinstances]
+  verbs: [get, list, watch]
+- apiGroups: [subresources.kubevirt.io]
+  resources: [virtualmachines/start]
+  verbs: [get, list, watch, update]
+- apiGroups: [subresources.kubevirt.io]
+  resources: [virtualmachines/stop]
+  verbs: [get, list, watch, update]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: vixi-sa
+  namespace: vixi
+roleRef:
+  kind: ClusterRole
+  name: kubevirt-cluster-role
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: kubevirt-sa
+  namespace: vixi

@@ -1,0 +1,153 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2024 Guillaume Tucker
+
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: boot
+  namespace: vixi
+spec:
+  params:
+  - name: vmName
+    default: ubuntu-vixi
+  - name: privateKeySecretName
+    default: vixi-client-private-key
+  - name: publicKeySecretName
+    default: vixi-client-public-key
+
+  tasks:
+  - name: generate-ssh-keys
+    taskRef:
+      kind: Task
+      name: generate-ssh-keys
+    params:
+    - name: publicKeySecretName
+      value: $(params.publicKeySecretName)
+    - name: privateKeySecretName
+      value: $(params.privateKeySecretName)
+    - name: privateKeyConnectionOptions
+      value:
+      - 'user:ubuntu'
+      - 'disable-strict-host-key-checking:true'
+    - name: additionalSSHKeygenOptions
+      value: '-t rsa'
+  - name: create-vm-from-manifest
+    taskRef:
+      kind: Task
+      name: create-vm-from-manifest
+    runAfter:
+    - generate-ssh-keys
+    params:
+    - name: manifest
+      value: |
+            apiVersion: kubevirt.io/v1
+            kind: VirtualMachine
+            metadata:
+              name: $(params.vmName)
+            spec:
+              running: false
+              template:
+                metadata:
+                  labels:
+                    kubevirt.io/domain: $(params.vmName)
+                spec:
+                  accessCredentials:
+                    - sshPublicKey:
+                        source:
+                          secret:
+                            secretName: $(params.publicKeySecretName)
+                        propagationMethod:
+                          configDrive: {}
+                  hostname: $(params.vmName)
+                  nodeSelector:
+                    vixi/kvm-worker: "true"
+                  domain:
+                    cpu:
+                      cores: 2
+                      sockets: 1
+                      threads: 1
+                    firmware:
+                      kernelBoot:
+                        # Dockerfile:
+                        # FROM scratch
+                        # ADD --chown=107:107 bzImage boot/bzImage
+                        container:
+                          image: docker.io/gtucker/kernel-container-x86
+                          # initrdPath: /boot/rootfs.cpio
+                          kernelPath: /boot/bzImage
+                          imagePullPolicy: Always
+                        kernelArgs: console=ttyS0 root=/dev/vda1 rw setenforce 0
+                    devices:
+                      disks:
+                        - name: containerdisk
+                          disk:
+                            bus: virtio
+                        - name: cloudinitdisk
+                          disk:
+                            bus: virtio
+                      interfaces:
+                        - name: default
+                          masquerade: {}
+                          ports:
+                            - name: ssh
+                              port: 22
+                      networkInterfaceMultiqueue: true
+                      rng: {}
+                    resources:
+                      requests:
+                        memory: 1Gi
+                  networks:
+                    - name: default
+                      pod: {}
+                  terminationGracePeriodSeconds: 0
+                  volumes:
+                  - name: containerdisk
+                    containerDisk:
+                      image: quay.io/containerdisks/ubuntu:24.04
+                  - name: cloudinitdisk
+                    cloudInitConfigDrive:
+                      userData: |
+                        #cloud-config
+
+  - name: hello
+    taskRef:
+      kind: Task
+      name: execute-in-vm
+    runAfter:
+    - create-vm-from-manifest
+    params:
+        - name: vmName
+          value: "$(params.vmName)"
+        - name: secretName
+          value: "$(params.privateKeySecretName)"
+        - name: script
+          value: |
+            whoami
+            pwd
+            df -h
+            lsblk
+            uname -a
+            echo "--- CPU ---"
+            head /proc/cpuinfo
+            echo "--- Memory ---"
+            head /proc/meminfo
+            sudo dmesg | head
+            ps auxf
+
+  finally:
+  - name: cleanup
+    taskRef:
+      kind: Task
+      name: cleanup-vm
+    params:
+        - name: vmName
+          value: "$(params.vmName)"
+        - name: secretName
+          value: "$(params.privateKeySecretName)"
+        - name: delete
+          value: "true"
+        - name: timeout
+          value: "5m"
+        - name: script
+          value: ""
