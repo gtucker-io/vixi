@@ -23,6 +23,10 @@ kubectl get namespaces -o name | grep "namespace/cdi" || {
     kubectl create -f "$CDI_URL"v1.60.3/cdi-cr.yaml
 }
 
+echo "Deploying Kubernetes resources..."
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/kubevirt.yaml
+
 echo "Deploying KubeVirt Tekton tasks..."
 kubectl apply -n vixi -f "$KVTKN_URL"v0.22.0/kubevirt-tekton-tasks.yaml
 
