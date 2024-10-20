@@ -119,20 +119,40 @@ metadata:
 spec:
   workspaces:
   - name: sandbox
+  - name: tmp
   params:
   -  name: tree
   -  name: url
   -  name: revision
-  - {name: arch,       default: x86_64}
-  - {name: defconfig,  default: defconfig}
+  - {name: arch,       default: 'x86_64'}
+  - {name: defconfig,  default: 'defconfig'}
   - {name: opts,       default: ''}
-  - {name: cc,         default: gcc}
-  - {name: ccver,      default: 14.2}
-  - {name: ccarch,     default: -x86}
+  - {name: cc,         default: 'gcc'}
+  - {name: ccver,      default: '14.2'}
+  - {name: ccarch,     default: '-x86'}
   - {name: registry,   default: registry.gitlab.com/gtucker/korg/}
   - {name: bucket,     default: gs://vixi-sandbox}
+  volumes:
+  - name: api-key
+    secret:
+      secretName: api-key
+  results:
+  - name: revision
+    description: Kernel source tree checkout
+  - name: build
+    description: Kernel build
 
   steps:
+  - name: api
+    image: registry.gitlab.com/gtucker.io/renelick:main
+    volumeMounts:
+    - name: api-key
+      mountPath: /home/renelick/.config/renelick
+    script: |
+      #!/usr/bin/env bash
+      renelick hello
+      renelick whoami
+
   - name: checkout
     image: alpine/git:v2.45.2
     workingDir: $(workspaces.sandbox.path)/kbuild
@@ -140,7 +160,10 @@ spec:
       runAsNonRoot: true
       runAsUser: 1000
     script: |
-      set -euo pipefail
+      #!/usr/bin/env ash
+      set -eo pipefail
+
+      date -Iseconds > "$(workspaces.tmp.path)/checkout-start"
 
       tree=$(params.tree)
       url=$(params.url)
@@ -162,12 +185,46 @@ spec:
       git log -n1
       du -hs .git
 
-  - name: build
+      date -Iseconds > "$(workspaces.tmp.path)/checkout-end"
+
+  - &result-node
+    name: result-node
+    env: [{name: STEP, value: checkout}]
+    image: registry.gitlab.com/gtucker.io/renelick:main
+    volumeMounts:
+    - name: api-key
+      mountPath: /home/renelick/.config/renelick
+    workingDir: $(workspaces.sandbox.path)/kbuild/$(params.tree)
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+    script: |
+      parent_path=$(workspaces.tmp.path)/parent_id
+      [ -f "$parent_path" ] && popt="parent=$(cat $parent_path)"
+      sha1=$(git show --format=%H -s)
+      renelick node make \
+          name="$(params.tree)-${sha1}-${STEP}" \
+          kind="vixi.kbuild" \
+          $popt \
+          data.revision.sha1="$sha1" \
+          data.revision.describe="$(git describe)" \
+          data.revision.subject="$(git show --format=%s -s)" \
+          data.revision.tree="$(params.tree)" \
+          data.revision.url="$(params.url)" \
+          data.start-time="$(cat $(workspaces.tmp.path)/${STEP}-start)" \
+          data.end-time="$(cat $(workspaces.tmp.path)/${STEP}-end)" \
+          data.step="${STEP}" \
+      | renelick node add - | tee $(workspaces.tmp.path)/parent_id
+
+  - name: defconfig
     image: $(params.registry)$(params.cc):$(params.ccver)-x86$(params.ccarch)
     workingDir: $(workspaces.sandbox.path)/kbuild
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
     script: |
       #!/usr/bin/env bash
-      set -euo pipefail
+      set -eo pipefail
 
       tree=$(params.tree)
       arch=$(params.arch)
@@ -180,10 +237,54 @@ spec:
       echo "Compiler:      $compiler"
       echo "Options:       $opts"
 
+      date -Iseconds > "$(workspaces.tmp.path)/defconfig-start"
       cd "$tree"
       bdir="build/$arch/$compiler"
       mkdir -p "$bdir"
       make O="$bdir" $opts defconfig
-      make O="$bdir" $opts bzImage -j$(nproc)
-      make O="$bdir" $opts modules -j$(nproc)
-      ls -l "$bdir"/arch/"$arch"/boot/bzImage
+      date -Iseconds > "$(workspaces.tmp.path)/defconfig-end"
+
+  - <<: *result-node
+    name: defconfig-node
+    env: [{name: STEP, value: defconfig}]
+
+  - name: image
+    image: $(params.registry)$(params.cc):$(params.ccver)-x86$(params.ccarch)
+    workingDir: $(workspaces.sandbox.path)/kbuild
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+    script: |
+      #!/usr/bin/env bash
+      set -eo pipefail
+
+      date -Iseconds > "$(workspaces.tmp.path)/image-start"
+      cd "$(params.tree)"
+      compiler="$(params.cc)-$(params.ccver)"
+      make O="build/$(params.arch)/$compiler" $(params.opts) -j$(nproc) bzImage
+      ls -l "build/$(params.arch)/$compiler"/arch/"$(params.arch)"/boot/bzImage
+      date -Iseconds > "$(workspaces.tmp.path)/image-end"
+
+  - <<: *result-node
+    name: image-node
+    env: [{name: STEP, value: image}]
+
+  - name: modules
+    image: $(params.registry)$(params.cc):$(params.ccver)-x86$(params.ccarch)
+    workingDir: $(workspaces.sandbox.path)/kbuild
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+    script: |
+      #!/usr/bin/env bash
+      set -eo pipefail
+
+      date -Iseconds > "$(workspaces.tmp.path)/modules-start"
+      cd "$(params.tree)"
+      compiler="$(params.cc)-$(params.ccver)"
+      make O="build/$(params.arch)/$compiler" $(params.opts) -j$(nproc) modules
+      date -Iseconds > "$(workspaces.tmp.path)/modules-end"
+
+  - <<: *result-node
+    name: modules-node
+    env: [{name: STEP, value: modules}]
