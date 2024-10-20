@@ -32,8 +32,7 @@ else
         --workload-metadata=GKE_METADATA \
         --machine-type=e2-medium \
         --disk-type=pd-standard \
-        --node-labels=vixi/default=true \
-        --num-nodes=3
+        --num-nodes=2
 fi
 
 kubectl get nodes -o name | grep default-pool \
@@ -48,7 +47,7 @@ gcloud container clusters get-credentials "${CLUSTER}" --location "${LOCATION}"
 found_pool=$(
   gcloud container node-pools list \
       --cluster="$CLUSTER" --location="$LOCATION" \
-      --filter=worker-pool --format="value(NAME)"
+      --filter=vixi-workers --format="value(NAME)"
 )
 
 if [ -n "$found_pool" ]; then
@@ -56,7 +55,7 @@ if [ -n "$found_pool" ]; then
 else
     # ToDo: consider using c3d-standard-8-lssd with local workspace
     echo "Creating worker pool..."
-        gcloud container node-pools create worker-pool \
+        gcloud container node-pools create vixi-workers \
             --cluster="${CLUSTER}" \
             --location="${LOCATION}" \
             --workload-metadata=GKE_METADATA \
@@ -74,21 +73,21 @@ fi
 found_pool=$(
   gcloud container node-pools list \
       --cluster="$CLUSTER" --location="$LOCATION" \
-      --filter=kvm-worker-pool --format="value(NAME)"
+      --filter=vixi-kvm-workers --format="value(NAME)"
 )
 
 if [ -n "$found_pool" ]; then
     echo "KVM worker pool already exists, not creating."
 else
     echo "Creating worker pool..."
-        gcloud container node-pools create kvm-worker-pool \
+        gcloud container node-pools create vixi-kvm-workers \
             --cluster="${CLUSTER}" \
             --location="${LOCATION}" \
             --workload-metadata=GKE_METADATA \
             --enable-nested-virtualization \
             --image-type=UBUNTU_CONTAINERD \
             --machine-type=n2-highmem-2 \
-            --disk-type=pd-standard \
+            --disk-type=pd-balanced \
             --disk-size=100 \
             --enable-autoscaling \
             --total-min-nodes=0 \
