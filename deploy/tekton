@@ -9,14 +9,14 @@ set -eo pipefail
 URL="https://storage.googleapis.com/tekton-releases/"
 
 echo "Deploying pipelines..."
-kubectl apply -f "$URL"pipeline/previous/v0.64.0/release.yaml
+kubectl apply -f "$URL"pipeline/previous/v1.2.0/release.yaml
 
 echo "Deploying dashboard..."
-kubectl apply -f "$URL"dashboard/previous/v0.51.0/release.yaml
+kubectl apply -f "$URL"dashboard/previous/v0.59.0/release.yaml
 
 echo "Deploying triggers..."
-kubectl apply -f "$URL"triggers/previous/v0.29.1/release.yaml
-kubectl apply -f "$URL"triggers/previous/v0.29.1/interceptors.yaml
+kubectl apply -f "$URL"triggers/previous/v0.32.0/release.yaml
+kubectl apply -f "$URL"triggers/previous/v0.32.0/interceptors.yaml
 
 echo "Waiting for deployments..."
 kubectl wait -n tekton-pipelines deployment \
@@ -26,6 +26,6 @@ kubectl wait -n tekton-pipelines deployment \
 kubectl wait -n tekton-pipelines deployment \
     tekton-triggers-webhook --for condition=Available --timeout 10m
 
-kubectl get all -n tekton-pipelines
+kubectl -n tekton-pipelines get pods
 
 exit 0
