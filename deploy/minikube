@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2025 Guillaume Tucker
+
+set -eo pipefail
+
+which minikube > /dev/null || {
+    which dpkg || {
+        echo "MiniKube not found, please install it:"
+        echo https://minikube.sigs.k8s.io/docs/start/
+        exit 1
+    }
+    echo Installing MiniKube for Debian
+    [ -f minikube_latest_amd64.deb ] || {
+        curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
+    }
+    ls -l minikube_latest_amd64.deb
+    sudo dpkg -i minikube_latest_amd64.deb
+}
+
+minikube version
+minikube start --cpus=2 --memory=2048
+minikube addons enable metrics-server
+
+kubectl label node/minikube vixi/worker=true
+
+exit 0
