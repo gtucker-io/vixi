@@ -10,6 +10,30 @@ echo "Deploying Kubernetes resources..."
 kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/volumes.yaml
 
+[ -d secrets ] || {
+    echo "Secrets directory not found, aborting"
+    exit 1
+}
+
+(
+    cd secrets
+    [ -f api-key/credentials.json ] || {
+        echo "Missing secrets/api-key/credentials.json, aborting"
+        exit 1
+    }
+    [ -f api-key/settings.toml ] || {
+        echo "Missing secrets/api-key/settings.toml, aborting"
+        exit 1
+    }
+    kubectl -n vixi get secret api-key > /dev/null 2>&1 || {
+        echo "Creating secret with Renelick API key and settings"
+        kubectl create secret generic api-key \
+            --namespace=vixi \
+            --from-file=credentials.json=api-key/credentials.json \
+            --from-file=settings.toml=api-key/settings.toml
+    }
+)
+
 echo "Deploying Tekton resources..."
 kubectl apply -f tekton/boot.yaml
 kubectl apply -f tekton/kbuild.yaml
