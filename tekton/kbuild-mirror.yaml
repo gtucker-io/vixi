@@ -24,3 +24,5 @@ spec:
   - name: sandbox
     persistentVolumeClaim:
       claimName: kbuild-sandbox
+  - name: tmp
+    emptyDir: {}

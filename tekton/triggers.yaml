@@ -75,6 +75,8 @@ spec:
       - name: sandbox
         persistentVolumeClaim:
           claimName: kbuild-sandbox
+      - name: tmp
+        emptyDir: {}
       params:
       - name: tree
         value: $(tt.params.tree)
@@ -149,6 +151,8 @@ spec:
       - name: sandbox
         persistentVolumeClaim:
           claimName: kbuild-sandbox
+      - name: tmp
+        emptyDir: {}
       params:
       - {name: tree,       value: $(tt.params.tree)}
       - {name: url,        value: $(tt.params.url)}
