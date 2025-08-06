@@ -91,27 +91,27 @@ deploy/vixi
 Set up port forwarding for the event listener:
 
 ```
-kubectl port-forward -n vixi svc/el-kbuild-mirror-trigger-listener 9100:8080
+kubectl port-forward -n vixi svc/el-kbuild-mirror-trigger-listener 9101:8080
 ```
 
 ```
-kubectl port-forward -n vixi svc/el-kbuild-trigger-listener 9101:8080
+kubectl port-forward -n vixi svc/el-kbuild-trigger-listener 9102:8080
 ```
 
 To trigger Git mirror updates:
 
 ```
-curl -d '{"tree": "torvalds", "url": "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"}' http://localhost:9100
+curl -d '{"tree": "torvalds", "url": "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"}' http://localhost:9101
 ```
 ```
-curl -d '{"tree": "linux-next", "url": "git://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git"}' http://localhost:9100
+curl -d '{"tree": "linux-next", "url": "git://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git"}' http://localhost:9101
 ```
 ```
-curl -d '{"tree": "stable", "url": "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"}' http://localhost:9100
+curl -d '{"tree": "stable", "url": "git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git"}' http://localhost:9101
 ```
 
 To trigger kernel builds:
 
 ```
-curl -d '{"tree": "torvalds", "url": "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git", "revision": "v6.11", "arch": "x86_64", "defconfig": "defconfig", "cc": "gcc"}' http://localhost:9101
+curl -d '{"tree": "torvalds", "url": "git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git", "revision": "v6.16", "arch": "x86_64", "defconfig": "defconfig", "cc": "gcc"}' http://localhost:9102
 ```
