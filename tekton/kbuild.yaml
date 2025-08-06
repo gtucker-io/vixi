@@ -15,7 +15,8 @@ spec:
     image: alpine:3.20
     workingDir: $(workspaces.sandbox.path)
     script: |
-      set -euo pipefail
+      #!/usr/bin/env ash
+      set -eo pipefail
 
       mkdir -p kbuild
       chown 1000:1000 kbuild
@@ -29,17 +30,25 @@ metadata:
 spec:
   workspaces:
   - name: sandbox
+  - name: tmp
   params:
   - name: tree
     default: torvalds
   - name: url
     default: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+  volumes:
+  - name: api-key
+    secret:
+      secretName: api-key
   steps:
   - name: mirror
     image: alpine/git:v2.45.2
     workingDir: $(workspaces.sandbox.path)/mirror
     script: |
+      #!/usr/bin/env ash
       set -eo pipefail
+
+      date -Iseconds > "$(workspaces.tmp.path)/mirror-start"
 
       tree=$(params.tree)
       url=$(params.url)
@@ -58,7 +67,7 @@ spec:
           cd - >/dev/null
       else
           git clone --mirror --verbose \
-            https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+              https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
       fi
 
       [ -d "$tree".git ] || {
@@ -74,6 +83,33 @@ spec:
       du -hs
       cd - >/dev/null
       df -h $(workspaces.sandbox.path)
+      date -Iseconds > "$(workspaces.tmp.path)/mirror-end"
+
+  - name: mirror-node
+    image: registry.gitlab.com/gtucker.io/renelick:main
+    workingDir: $(workspaces.sandbox.path)/mirror/$(params.tree).git
+    volumeMounts:
+    - name: api-key
+      mountPath: /home/renelick/.config/renelick
+    script: |
+      #!/usr/bin/env bash
+      set -eo pipefail
+
+      git config --global --add safe.directory \
+          "$(workspaces.sandbox.path)/mirror/$(params.tree).git"
+      git log -n1 > $(workspaces.tmp.path)/git-head.txt
+      renelick node make \
+          name="kbuild-mirror-$(params.tree)" \
+          kind="vixi.mirror" \
+          data.revision.sha1="${sha1}" \
+          data.revision.describe="$(git describe)" \
+          data.revision.subject="$(git show --format=%s -s)" \
+          data.revision.tree="$(params.tree)" \
+          data.revision.url="$(params.url)" \
+          data.git-head__file="$(workspaces.tmp.path)/git-head.txt" \
+          data.start-time="$(cat $(workspaces.tmp.path)/mirror-start)" \
+          data.end-time="$(cat $(workspaces.tmp.path)/mirror-end)" \
+      | renelick node add -
 ---
 apiVersion: tekton.dev/v1
 kind: Task
