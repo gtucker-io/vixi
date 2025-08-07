@@ -1,0 +1,74 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2025 Guillaume Tucker
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: garbage-sa
+  namespace: vixi
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: garbage-role
+  namespace: vixi
+rules:
+- apiGroups: [tekton.dev]
+  resources: [pipelineruns]
+  verbs: [delete, get, watch, list]
+- apiGroups: [tekton.dev]
+  resources: [taskruns]
+  verbs: [delete, get, watch, list]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: garbage-role-binding
+  namespace: vixi
+roleRef:
+  kind: Role
+  name: garbage-role
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: garbage-sa
+  namespace: vixi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: garbage-collector
+  namespace: vixi
+spec:
+  schedule: '*/3 * * * *'
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          serviceAccount: garbage-sa
+          containers:
+
+          - name: pipeline-runs
+            image: ghcr.io/ctron/kubectl:latest
+            command:
+            - /bin/bash
+            - -c
+            - |
+              TO_DELETE="$(kubectl get pipelinerun -o jsonpath='{.items[?(@.status.completionTime)].metadata.name}')"
+              if [ -n "$TO_DELETE" ]; then
+                kubectl delete pipelinerun ${TO_DELETE}
+              fi
+
+          - name: task-runs
+            image: ghcr.io/ctron/kubectl:latest
+            command:
+            - /bin/bash
+            - -c
+            - |
+              TO_DELETE=$(kubectl get taskrun -o json | jq -r '.items[] | select(.status.completionTime) | select(.metadata.labels."tekton.dev/task").metadata.name')
+              if [ -n "$TO_DELETE" ]; then
+                kubectl delete taskrun ${TO_DELETE}
+              fi
