@@ -49,6 +49,7 @@ metadata:
   namespace: vixi
 spec:
   params:
+  - name: uuid
   - name: tree
     default: torvalds
   - name: url
@@ -78,10 +79,9 @@ spec:
       - name: tmp
         emptyDir: {}
       params:
-      - name: tree
-        value: $(tt.params.tree)
-      - name: url
-        value: $(tt.params.url)
+      - {name: uuid,       value: $(tt.params.uuid)}
+      - {name: tree,       value: $(tt.params.tree)}
+      - {name: url,        value: $(tt.params.url)}
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
@@ -90,10 +90,9 @@ metadata:
   namespace: vixi
 spec:
   params:
-  - name: tree
-    value: $(body.tree)
-  - name: url
-    value: $(body.url)
+  - {name: uuid,       value: $(body.uuid)}
+  - {name: tree,       value: $(body.tree)}
+  - {name: url,        value: $(body.url)}
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: EventListener
@@ -120,6 +119,7 @@ metadata:
   namespace: vixi
 spec:
   params:
+  -  name: uuid
   -  name: tree
   -  name: url
   -  name: revision
@@ -154,6 +154,7 @@ spec:
       - name: tmp
         emptyDir: {}
       params:
+      - {name: uuid,       value: $(tt.params.uuid)}
       - {name: tree,       value: $(tt.params.tree)}
       - {name: url,        value: $(tt.params.url)}
       - {name: revision,   value: $(tt.params.revision)}
@@ -171,6 +172,7 @@ metadata:
   namespace: vixi
 spec:
   params:
+  - {name: uuid,       value: $(body.uuid)}
   - {name: tree,       value: $(body.tree)}
   - {name: url,        value: $(body.url)}
   - {name: revision,   value: $(body.revision)}

@@ -32,6 +32,7 @@ spec:
   - name: sandbox
   - name: tmp
   params:
+  - name: uuid
   - name: tree
     default: torvalds
   - name: url
@@ -98,9 +99,16 @@ spec:
       git config --global --add safe.directory \
           "$(workspaces.sandbox.path)/mirror/$(params.tree).git"
       git log -n1 > $(workspaces.tmp.path)/git-head.txt
+      if [ -n "$(params.uuid)" ]; then
+          renelick task get $(params.uuid) > $(workspaces.tmp.path)/task.json
+          task_param="task__json=$(workspaces.tmp.path)/task.json"
+      else
+          task_param="task__null="
+      fi
       renelick node make \
           name="kbuild-mirror-$(params.tree)" \
           kind="vixi.mirror" \
+          ${task_param} \
           data.revision.sha1="${sha1}" \
           data.revision.describe="$(git describe)" \
           data.revision.subject="$(git show --format=%s -s)" \
@@ -110,6 +118,7 @@ spec:
           data.start-time="$(cat $(workspaces.tmp.path)/mirror-start)" \
           data.end-time="$(cat $(workspaces.tmp.path)/mirror-end)" \
       | renelick node add -
+      [ -n "$(params.uuid)" ] && renelick task complete $(params.uuid)
 ---
 apiVersion: tekton.dev/v1
 kind: Task
@@ -121,6 +130,7 @@ spec:
   - name: sandbox
   - name: tmp
   params:
+  -  name: uuid
   -  name: tree
   -  name: url
   -  name: revision
@@ -143,15 +153,32 @@ spec:
     description: Kernel build
 
   steps:
-  - name: api
+  - name: root-node
     image: registry.gitlab.com/gtucker.io/renelick:main
     volumeMounts:
     - name: api-key
       mountPath: /home/renelick/.config/renelick
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
     script: |
       #!/usr/bin/env bash
       renelick hello
       renelick whoami
+
+      if [ -n "$(params.uuid)" ]; then
+          renelick task get $(params.uuid) > $(workspaces.tmp.path)/task.json
+          task_param="task__json=$(workspaces.tmp.path)/task.json"
+      else
+          task_param="task__null="
+      fi
+
+      renelick node make \
+          name="$(params.tree)-kbuild" \
+          kind="vixi.kbuild" \
+          ${task_param} \
+          data.start-time="$(date -Iseconds)" \
+      | renelick node add - | tee $(workspaces.tmp.path)/parent_id
 
   - name: checkout
     image: alpine/git:v2.45.2
@@ -199,6 +226,7 @@ spec:
       runAsNonRoot: true
       runAsUser: 1000
     script: |
+      #!/usr/bin/env bash
       parent_path=$(workspaces.tmp.path)/parent_id
       [ -f "$parent_path" ] && popt="parent=$(cat $parent_path)"
       sha1=$(git show --format=%H -s)
@@ -288,3 +316,17 @@ spec:
   - <<: *result-node
     name: modules-node
     env: [{name: STEP, value: modules}]
+
+  - name: complete-task
+    image: registry.gitlab.com/gtucker.io/renelick:main
+    volumeMounts:
+    - name: api-key
+      mountPath: /home/renelick/.config/renelick
+    workingDir: $(workspaces.tmp.path)
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+    script: |
+      #!/usr/bin/env bash
+      [ -n "$(params.uuid)" ] && renelick task complete $(params.uuid)
+      echo Done $(params.uuid)
