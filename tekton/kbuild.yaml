@@ -274,11 +274,41 @@ spec:
       bdir="build/$arch/$compiler"
       mkdir -p "$bdir"
       make O="$bdir" $opts defconfig
+      make O="$bdir" $opts savedefconfig
       date -Iseconds > "$(workspaces.tmp.path)/defconfig-end"
 
   - <<: *result-node
     name: defconfig-node
     env: [{name: STEP, value: defconfig}]
+
+  - &artifact-node
+    name: defconfig-artifact
+    env: [{name: ARTIFACT, value: defconfig}]
+    image: registry.gitlab.com/gtucker.io/renelick:main
+    imagePullPolicy: Always
+    volumeMounts:
+    - name: api-key
+      mountPath: /home/renelick/.config/renelick
+    workingDir: $(workspaces.sandbox.path)/kbuild/$(params.tree)
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+    script: |
+      #!/usr/bin/env bash
+      compiler="$(params.cc)-$(params.ccver)"
+      cd "build/$(params.arch)/$compiler"
+      ls -l "${ARTIFACT}"
+      url=$(renelick storage upload ${ARTIFACT} \
+            --dest=kbuild-$(params.uuid) --storage=gtucker.io)
+      echo "${url}"
+      parent_path=$(workspaces.tmp.path)/parent_id
+      renelick node make \
+          name="$(basename ${ARTIFACT})" \
+          kind="artifact-v1" \
+          parent="$(cat ${parent_path})" \
+          data.url="${url}" \
+          data.storage="ssh" \
+      | renelick node add -
 
   - name: image
     image: $(params.registry)$(params.cc):$(params.ccver)-x86$(params.ccarch)
@@ -302,6 +332,10 @@ spec:
     name: image-node
     env: [{name: STEP, value: image}]
 
+  - <<: *artifact-node
+    name: image-artifact
+    env: [{name: ARTIFACT, value: arch/$(params.arch)/boot/bzImage}]
+
   - name: modules
     image: $(params.registry)$(params.cc):$(params.ccver)-x86$(params.ccarch)
     imagePullPolicy: Always
@@ -316,12 +350,23 @@ spec:
       date -Iseconds > "$(workspaces.tmp.path)/modules-start"
       cd "$(params.tree)"
       compiler="$(params.cc)-$(params.ccver)"
-      make O="build/$(params.arch)/$compiler" $(params.opts) -j$(nproc) modules
+      bdir="build/$(params.arch)/$compiler"
+      make O="${bdir}" $(params.opts) -j$(nproc) modules
+      rm -rf "${bdir}/_modules_"
+      mkdir "${bdir}/_modules_"
+      make O="${bdir}" $(params.opts) \
+          INSTALL_MOD_PATH=_modules_ INSTALL_MOD_STRIP=1 modules_install
+      cd "${bdir}"
+      tar czf modules.tar.gz -C _modules_ .
       date -Iseconds > "$(workspaces.tmp.path)/modules-end"
 
   - <<: *result-node
     name: modules-node
     env: [{name: STEP, value: modules}]
+
+  - <<: *artifact-node
+    name: modules-artifact
+    env: [{name: ARTIFACT, value: modules.tar.gz}]
 
   - name: complete-task
     image: registry.gitlab.com/gtucker.io/renelick:main
