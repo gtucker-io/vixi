@@ -88,6 +88,7 @@ spec:
 
   - name: mirror-node
     image: registry.gitlab.com/gtucker.io/renelick:main
+    imagePullPolicy: Always
     workingDir: $(workspaces.sandbox.path)/mirror/$(params.tree).git
     volumeMounts:
     - name: api-key
@@ -155,6 +156,7 @@ spec:
   steps:
   - name: root-node
     image: registry.gitlab.com/gtucker.io/renelick:main
+    imagePullPolicy: Always
     volumeMounts:
     - name: api-key
       mountPath: /home/renelick/.config/renelick
@@ -218,6 +220,7 @@ spec:
     name: result-node
     env: [{name: STEP, value: checkout}]
     image: registry.gitlab.com/gtucker.io/renelick:main
+    imagePullPolicy: Always
     volumeMounts:
     - name: api-key
       mountPath: /home/renelick/.config/renelick
@@ -246,6 +249,7 @@ spec:
 
   - name: defconfig
     image: $(params.registry)$(params.cc):$(params.ccver)-x86$(params.ccarch)
+    imagePullPolicy: Always
     workingDir: $(workspaces.sandbox.path)/kbuild
     securityContext:
       runAsNonRoot: true
@@ -278,6 +282,7 @@ spec:
 
   - name: image
     image: $(params.registry)$(params.cc):$(params.ccver)-x86$(params.ccarch)
+    imagePullPolicy: Always
     workingDir: $(workspaces.sandbox.path)/kbuild
     securityContext:
       runAsNonRoot: true
@@ -299,6 +304,7 @@ spec:
 
   - name: modules
     image: $(params.registry)$(params.cc):$(params.ccver)-x86$(params.ccarch)
+    imagePullPolicy: Always
     workingDir: $(workspaces.sandbox.path)/kbuild
     securityContext:
       runAsNonRoot: true
@@ -319,6 +325,7 @@ spec:
 
   - name: complete-task
     image: registry.gitlab.com/gtucker.io/renelick:main
+    imagePullPolicy: Always
     volumeMounts:
     - name: api-key
       mountPath: /home/renelick/.config/renelick
