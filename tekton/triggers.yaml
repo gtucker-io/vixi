@@ -124,6 +124,7 @@ metadata:
 spec:
   params:
   -  name: uuid
+  -  name: storage
   -  name: tree
   -  name: url
   -  name: revision
@@ -160,6 +161,7 @@ spec:
         emptyDir: {}
       params:
       - {name: uuid,       value: $(tt.params.uuid)}
+      - {name: storage,    value: $(tt.params.storage)}
       - {name: tree,       value: $(tt.params.tree)}
       - {name: url,        value: $(tt.params.url)}
       - {name: revision,   value: $(tt.params.revision)}
@@ -179,6 +181,7 @@ metadata:
 spec:
   params:
   - {name: uuid,       value: $(body.uuid)}
+  - {name: storage,    value: $(body.storage)}
   - {name: tree,       value: $(body.tree)}
   - {name: url,        value: $(body.url)}
   - {name: revision,   value: $(body.revision)}

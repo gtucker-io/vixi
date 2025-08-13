@@ -141,6 +141,7 @@ spec:
   - name: tmp
   params:
   -  name: uuid
+  -  name: storage
   -  name: tree
   -  name: url
   -  name: revision
@@ -310,11 +311,15 @@ spec:
       runAsUser: 1000
     script: |
       #!/usr/bin/env bash
+      [ -z "$(params.storage)" ] && {
+          echo "WARNING - no storage defined, artifacts will not be saved"
+          exit 0
+      }
       compiler="$(params.cc)-$(params.ccver)"
       cd "build/$(params.arch)/$compiler"
       ls -l "${ARTIFACT}"
       url=$(renelick storage upload ${ARTIFACT} \
-            --dest=kbuild-$(params.uuid) --storage=gtucker.io)
+            --dest=kbuild-$(params.uuid) --storage=$(params.storage))
       echo "${url}"
       parent_path=$(workspaces.tmp.path)/parent_id
       renelick node make \
