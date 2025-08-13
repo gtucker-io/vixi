@@ -54,6 +54,8 @@ spec:
     default: torvalds
   - name: url
     default: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+  - name: reset
+    default: 'skip'
   resourcetemplates:
   - apiVersion: tekton.dev/v1beta1
     kind: TaskRun
@@ -82,6 +84,7 @@ spec:
       - {name: uuid,       value: $(tt.params.uuid)}
       - {name: tree,       value: $(tt.params.tree)}
       - {name: url,        value: $(tt.params.url)}
+      - {name: reset,      value: $(tt.params.reset)}
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
@@ -93,6 +96,7 @@ spec:
   - {name: uuid,       value: $(body.uuid)}
   - {name: tree,       value: $(body.tree)}
   - {name: url,        value: $(body.url)}
+  - {name: reset,      value: $(body.reset)}
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: EventListener
@@ -123,6 +127,7 @@ spec:
   -  name: tree
   -  name: url
   -  name: revision
+  - {name: reset,      default: 'skip'}
   - {name: arch,       default: 'x86_64'}
   - {name: defconfig,  default: 'defconfig'}
   - {name: opts,       default: ''}
@@ -158,6 +163,7 @@ spec:
       - {name: tree,       value: $(tt.params.tree)}
       - {name: url,        value: $(tt.params.url)}
       - {name: revision,   value: $(tt.params.revision)}
+      - {name: reset,      value: $(tt.params.reset)}
       - {name: arch,       value: $(tt.params.arch)}
       - {name: defconfig,  value: $(tt.params.defconfig)}
       - {name: opts,       value: $(tt.params.opts)}
@@ -176,6 +182,7 @@ spec:
   - {name: tree,       value: $(body.tree)}
   - {name: url,        value: $(body.url)}
   - {name: revision,   value: $(body.revision)}
+  - {name: reset,      value: $(body.reset)}
   - {name: arch,       value: $(body.arch)}
   - {name: defconfig,  value: $(body.defconfig)}
   - {name: opts,       value: $(body.opts)}

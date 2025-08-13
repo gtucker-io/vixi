@@ -34,9 +34,8 @@ spec:
   params:
   - name: uuid
   - name: tree
-    default: torvalds
   - name: url
-    default: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+  - name: reset
   volumes:
   - name: api-key
     secret:
@@ -59,6 +58,11 @@ spec:
       echo "Current mirrors:"
       find . -type d -name "*.git" | xargs du -hs
 
+      [ "$(params.reset)" == "all" ] && {
+          echo "Resetting all the mirrors"
+          rm -rf *.git
+      }
+
       if [ -d linux.git ]; then
           cd linux.git
           pwd
@@ -70,6 +74,11 @@ spec:
           git clone --mirror --verbose \
               https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
       fi
+
+      [ "$(params.reset)" == "true" ] && {
+          echo Resetting mirror for $tree.git
+          rm -rf "$tree.git"
+      }
 
       [ -d "$tree".git ] || {
           git clone --mirror --verbose --reference=linux.git "$url" "$tree".git
@@ -135,6 +144,7 @@ spec:
   -  name: tree
   -  name: url
   -  name: revision
+  -  name: reset
   - {name: arch,       default: 'x86_64'}
   - {name: defconfig,  default: 'defconfig'}
   - {name: opts,       default: ''}
@@ -165,7 +175,7 @@ spec:
       runAsUser: 1000
     script: |
       #!/usr/bin/env bash
-      renelick hello
+      renelick version
       renelick whoami
 
       if [ -n "$(params.uuid)" ]; then
@@ -200,6 +210,11 @@ spec:
       echo "Tree:     $tree"
       echo "URL:      $url"
       echo "Revision: $revision"
+
+      [ "$(params.reset)" == "true" ] && {
+          echo Resetting checkout for $tree
+          rm -rf "$tree"
+      }
 
       mirror=$(workspaces.sandbox.path)/mirror/"$tree".git
       if [ ! -d "$tree" ]; then
