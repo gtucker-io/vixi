@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 #
-# Copyright (C) 2024 Guillaume Tucker
+# Copyright (C) 2024, 2025 Guillaume Tucker
 
 apiVersion: tekton.dev/v1
 kind: Task
@@ -42,6 +42,7 @@ spec:
     default: vixi-client-private-key
   - name: publicKeySecretName
     default: vixi-client-public-key
+  - name: kernel-image
 
   tasks:
   - name: generate-ssh-keys
@@ -96,14 +97,12 @@ spec:
                       threads: 1
                     firmware:
                       kernelBoot:
-                        # Dockerfile:
-                        # FROM scratch
-                        # ADD --chown=107:107 bzImage boot/bzImage
                         container:
-                          image: docker.io/gtucker/kernel-container-x86
-                          # initrdPath: /boot/rootfs.cpio
+                          image: $(params.kernel-image)
+                          # ToDo: include modules in initrd.cpio
+                          # initrdPath: /boot/initrd.cpio
                           kernelPath: /boot/bzImage
-                          imagePullPolicy: Always
+                          imagePullPolicy: IfNotPresent
                         kernelArgs: console=ttyS0 root=/dev/vda1 rw setenforce 0
                     devices:
                       disks:

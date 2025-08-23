@@ -29,6 +29,9 @@ spec:
     value: "$(context.pipelineRun.name)-private-key"
   - name: publicKeySecretName
     value: "$(context.pipelineRun.name)-public-key"
+  - name: kernel-image
+    # arbitrary default image for development
+    value: docker.io/gtucker/kernel-image:941df570-5596-4bac-bb6c-df6e1b47fb5d
   timeouts:
     pipeline: "0h15m0s"
     tasks: "0h10m0s"
