@@ -26,6 +26,7 @@ minikube addons enable metrics-server
 
 kubectl label node/minikube vixi/app=true
 kubectl label node/minikube vixi/worker=true
+kubectl label node/minikube vixi/kvm-worker=true
 
 kubectl config set-context --current --namespace=vixi
 
