@@ -1,0 +1,452 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2025 Guillaume Tucker
+
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: kbuild-root-node
+  namespace: vixi
+spec:
+  params:
+  - { name: uuid,       default: ''          }
+  - { name: storage,    default: ''          }
+  - { name: clean,      default: 'skip'      }
+  -   name: tree
+  -   name: url
+  -   name: revision
+  - { name: arch,       default: 'x86_64'    }
+  - { name: defconfig,  default: 'defconfig' }
+  - { name: opts,       default: ''          }
+  - { name: cc,         default: 'gcc'       }
+  - { name: ccver,      default: '14.2'      }
+  - { name: ccarch,     default: '-x86'      }
+  results:
+  - name: node-id
+    description: Id of the database root node
+  volumes:
+  - name: api-key
+    secret:
+      secretName: api-key
+  workspaces:
+  - name: scratch
+  - name: artifacts
+  steps:
+  - name: root-node
+    image: registry.gitlab.com/gtucker.io/renelick:main
+    imagePullPolicy: Always
+    volumeMounts:
+    - name: api-key
+      mountPath: /home/renelick/.config/renelick
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+    env:
+    - { name: UUID,       value: $(params.uuid)      }
+    - { name: STORAGE,    value: $(params.storage)   }
+    - { name: CLEAN,      value: $(params.clean)     }
+    - { name: TREE,       value: $(params.tree)      }
+    - { name: URL,        value: $(params.url)       }
+    - { name: REVISION,   value: $(params.revision)  }
+    - { name: ARCH,       value: $(params.arch)      }
+    - { name: DEFCONFIG,  value: $(params.defconfig) }
+    - { name: OPTS,       value: $(params.opts)      }
+    - { name: CC,         value: $(params.cc)        }
+    - { name: CCVER,      value: $(params.ccver)     }
+    - { name: CCARCH,     value: $(params.ccarch)    }
+    script: |
+      #!/usr/bin/env bash
+      renelick version
+      renelick whoami
+
+      cat > $(workspaces.artifacts.path)/storage.env <<EOF
+      export UUID=${UUID}
+      export STORAGE=${STORAGE}
+      EOF
+
+      cat >$(workspaces.artifacts.path)/source.env <<EOF
+      export TREE="${TREE}"
+      export URL="${URL}"
+      export REVISION="${REVISION}"
+      export CLEAN="${CLEAN}"
+      EOF
+
+      cat >$(workspaces.artifacts.path)/params.env <<EOF
+      export ARCH="${ARCH}"
+      export DEFCONFIG="${DEFCONFIG}"
+      export OPTS="${OPTS}"
+      export CC="${CC}"
+      export CCVER="${CCVER}"
+      export CCARCH="${CCARCH}"
+      export BDIR="build/${ARCH}/${CC}-${CCVER}"
+      EOF
+
+      if [ -n "${UUID}" ]; then
+          renelick task get "${UUID}" > $(workspaces.scratch.path)/task.json
+          task_param="task__json=$(workspaces.scratch.path)/task.json"
+      else
+          task_param="task__null="
+      fi
+
+      echo "Build parameters:"
+      renelick node make \
+          arch="${ARCH}" \
+          defconfig="${DEFCONFIG}" \
+          opts="${OPTS}" \
+          cc="${CC}" \
+          ccver="${CCVER}" \
+          ccarch="${CCARCH}" \
+      | tee $(workspaces.artifacts.path)/params.json
+
+      renelick node make \
+          name="${TREE}-${REVISION}" \
+          kind="vixi.kbuild" \
+          ${task_param} \
+          data.params__json="$(workspaces.artifacts.path)/params.json" \
+      | renelick node add - | tee $(results.node-id.path)
+---
+
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: kbuild-scripts
+  namespace: vixi
+spec:
+  workspaces:
+  - name: sandbox
+  - name: artifacts
+  steps:
+  - &script-step
+    name: checkout
+    image: alpine:3.22.1
+    workingDir: $(workspaces.artifacts.path)
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+    env: [{ name: STEP, value: checkout }]
+    script: |
+      #!/usr/bin/env ash
+      set -eo pipefail
+
+      . $(workspaces.artifacts.path)/source.env
+      . $(workspaces.artifacts.path)/params.env
+      MIRROR="$(workspaces.sandbox.path)/mirror/${TREE}.git"
+      SCRIPT="${STEP}.sh"
+      mkdir "${STEP}"
+      cd "${STEP}"
+
+      cat >"${SCRIPT}" <<EOF
+      #!/usr/bin/env ash
+      set -eo pipefail
+
+      echo "Tree:     $TREE"
+      echo "URL:      $URL"
+      echo "Revision: $REVISION"
+
+      [ "${CLEAN}" == "true" ] && {
+          echo "Doing a clean build with new checkout for ${TREE}"
+          rm -rf "${TREE}"
+      }
+
+      if [ ! -d "$TREE" ]; then
+          git clone --reference-if-able="$MIRROR" -v --depth=1 "$URL" "$TREE"
+      fi
+
+      cd "$TREE"
+      git remote -v
+      git fetch --tags origin "$REVISION"
+      git checkout FETCH_HEAD
+      git log -n1
+      du -hs .git
+      EOF
+
+      cat "${SCRIPT}"
+      chmod 0755 "${SCRIPT}"
+
+  - <<: *script-step
+    name: defconfig
+    env: [{ name: STEP, value: defconfig }]
+    script: |
+      #!/usr/bin/env ash
+      set -eo pipefail
+
+      . $(workspaces.artifacts.path)/source.env
+      . $(workspaces.artifacts.path)/params.env
+      SCRIPT="${STEP}.sh"
+      mkdir "${STEP}"
+      cd "${STEP}"
+
+      cat >"${SCRIPT}" <<EOF
+      #!/usr/bin/env bash
+      set -eo pipefail
+
+      echo "Tree:          ${TREE}"
+      echo "Architecture:  ${ARCH}"
+      echo "Compiler:      ${CC}-${CCVER}"
+      echo "Options:       ${OPTS}"
+
+      cd "${TREE}"
+      mkdir -p "${BDIR}"
+      make O="${BDIR}" ${OPTS} defconfig
+      make O="${BDIR}" ${OPTS} savedefconfig
+      ln -s "\$(pwd)/${BDIR}/defconfig" "${PWD}/defconfig"
+      EOF
+
+      cat "${SCRIPT}"
+      chmod 0755 "${SCRIPT}"
+
+  - <<: *script-step
+    name: image
+    env: [{ name: STEP, value: image }]
+    script: |
+      #!/usr/bin/env ash
+      set -eo pipefail
+
+      . $(workspaces.artifacts.path)/source.env
+      . $(workspaces.artifacts.path)/params.env
+      SCRIPT="${STEP}.sh"
+      mkdir "${STEP}"
+      cd "${STEP}"
+
+      cat >"${SCRIPT}" <<EOF
+      #!/usr/bin/env bash
+      set -eo pipefail
+
+      cd "${TREE}"
+      make O="${BDIR}" ${OPTS} -j$(nproc) bzImage
+      ln -s "\$(pwd)/${BDIR}/arch/${ARCH}/boot/bzImage" "${PWD}/bzImage"
+      EOF
+
+      cat "${SCRIPT}"
+      chmod 0755 "${SCRIPT}"
+
+  - <<: *script-step
+    name: modules
+    env: [{ name: STEP, value: modules }]
+    script: |
+      #!/usr/bin/env ash
+      set -eo pipefail
+
+      . $(workspaces.artifacts.path)/source.env
+      . $(workspaces.artifacts.path)/params.env
+      SCRIPT="${STEP}.sh"
+      mkdir "${STEP}"
+      cd "${STEP}"
+
+      cat >"${SCRIPT}" <<EOF
+      #!/usr/bin/env bash
+      set -eo pipefail
+
+      cd "${TREE}"
+      make O="${BDIR}" ${OPTS} -j$(nproc) modules
+      rm -rf "${BDIR}/_modules_"
+      mkdir "${BDIR}/_modules_"
+      make O="${BDIR}" ${OPTS} \
+          INSTALL_MOD_PATH=_modules_ INSTALL_MOD_STRIP=1 modules_install
+      cd "${BDIR}"
+      tar czf modules.tar.gz -C _modules_ .
+      ln -s "\$(pwd)/modules.tar.gz" "${PWD}/modules.tar.gz"
+      EOF
+
+      cat "${SCRIPT}"
+      chmod 0755 "${SCRIPT}"
+---
+
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: kbuild-step
+  namespace: vixi
+spec:
+  params:
+  - name: step
+  - name: image
+  workspaces:
+  - name: sandbox
+  - name: artifacts
+  steps:
+  - name: script
+    image: $(params.image)
+    workingDir: $(workspaces.sandbox.path)/kbuild
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+    env:
+    - { name: STEP,  value: $(params.step)  }
+    # ToDo: replace with Python command for better error handling
+    script: |
+      set -e
+      SCRIPT=$(workspaces.artifacts.path)/${STEP}/${STEP}.sh
+      LOG=$(workspaces.artifacts.path)/${STEP}/${STEP}.txt
+      TIME_PX="$(workspaces.artifacts.path)/${STEP}"
+      echo -n $(date -Iseconds) > "${TIME_PX}-start-time"
+      "${SCRIPT}" 2>&1 | tee "${LOG}"
+      echo -n $(date -Iseconds) > "${TIME_PX}-end-time"
+---
+
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: kbuild-result
+  namespace: vixi
+spec:
+  params:
+  - name: parent
+  - name: step
+  results:
+  - name: node-id
+    description: Id of the database node with the task's result
+    value: $(steps.node.results.id)
+  volumes:
+  - name: api-key
+    secret:
+      secretName: api-key
+  workspaces:
+  - name: sandbox
+  - name: artifacts
+  steps:
+  - &result-step
+    name: node
+    results:
+    - name: id
+    image: registry.gitlab.com/gtucker.io/renelick:main
+    imagePullPolicy: IfNotPresent
+    volumeMounts:
+    - name: api-key
+      mountPath: /home/renelick/.config/renelick
+    workingDir: $(workspaces.sandbox.path)/kbuild/
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+    env:
+    - { name: PARENT,      value: $(params.parent)     }
+    - { name: STEP,        value: $(params.step)       }
+    script: |
+      #!/usr/bin/env bash
+      . $(workspaces.artifacts.path)/source.env
+      cd "${TREE}"
+      [ -n "${PARENT}" ] && popt="parent=$( echo ${PARENT} | tr -d \n)"
+      revision="$(workspaces.artifacts.path)/revision.json"
+      describe="$(git describe)"
+      [ -f "${revision}" ] || {
+          renelick node make \
+              sha1="$(git show --format=%H -s)" \
+              describe="${describe}" \
+              subject="$(git show --format=%s -s)" \
+              tree="${TREE}" \
+              url="${URL}" \
+          > "${revision}"
+      }
+      TIME_PX="$(workspaces.artifacts.path)/${STEP}"
+      renelick node make \
+          name="${TREE}-${describe}-${STEP}" \
+          kind="vixi.kbuild" \
+          $popt \
+          data.start-time__file="${TIME_PX}-start-time" \
+          data.end-time__file="${TIME_PX}-end-time" \
+          data.step="${STEP}" \
+          data.revision__json="${revision}" \
+          data.params__json="$(workspaces.artifacts.path)/params.json" \
+      | renelick node add - | tee $(step.results.id.path)
+
+  - <<: *result-step
+    name: artifacts
+    workingDir: $(workspaces.artifacts.path)/$(params.step)
+    env:
+    - { name: PARENT,  value: $(steps.node.results.id) }
+    - { name: STEP,    value: $(params.step)           }
+    script: |
+      #!/usr/bin/env bash
+      . $(workspaces.artifacts.path)/storage.env
+      [ -z "${STORAGE}" ] && {
+          echo "WARNING - no storage defined, artifacts will not be saved"
+          exit 0
+      }
+      [ -z "${UUID}" ] && {
+          echo "WARNING - no task UUID defined, artifacts will not be saved"
+          exit 0
+      }
+      PARENT=$(echo "${PARENT}" | tr -d \\n)
+      find -L . -type f | while read file; do
+          echo "Uploading $file"
+          url=$(renelick storage upload "${file}" \
+                --dest="kbuild-${UUID}" --storage="${STORAGE}")
+          echo "${url}"
+          renelick node make \
+              name="$(basename ${file})" \
+              kind="artifact-v1" \
+              parent="${PARENT}" \
+              data.url="${url}" \
+              data.storage="ssh" \
+          | renelick node add -
+      done
+---
+
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: kbuild-docker-image
+  namespace: vixi
+spec:
+  params:
+  - name: parent
+  results:
+  - name: node-id
+    description: Id of the database node with the data to boot the kernel
+  volumes:
+  - name: dind-socket
+    hostPath:
+      path: /var/run/docker.sock
+      type: Socket
+  - name: api-key
+    secret:
+      secretName: api-key
+  workspaces:
+  - name: sandbox
+  - name: artifacts
+  - name: scratch
+  steps:
+  - name: kernel-image
+    image: docker:28.3.3
+    volumeMounts:
+    - name: dind-socket
+      mountPath: /var/run/docker.sock
+    workingDir: $(workspaces.scratch.path)
+    script: |
+      . $(workspaces.artifacts.path)/storage.env
+      . $(workspaces.artifacts.path)/source.env
+      . $(workspaces.artifacts.path)/params.env
+      ARTIFACT="${TREE}/${BDIR}/arch/${ARCH}/boot/bzImage"
+      cp "$(workspaces.sandbox.path)/kbuild/${ARTIFACT}" .
+      echo "FROM scratch" > Dockerfile
+      echo "ADD --chown=107:107 bzImage boot/bzImage" >> Dockerfile
+      tag="docker.io/gtucker/kernel-image:${UUID}"
+      docker build . --no-cache --tag "${tag}"
+      # ToDo: docker push "${tag}"
+
+  - name: docker-node
+    image: registry.gitlab.com/gtucker.io/renelick:main
+    imagePullPolicy: IfNotPresent
+    volumeMounts:
+    - name: api-key
+      mountPath: /home/renelick/.config/renelick
+    workingDir: $(workspaces.scratch.path)
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+    env:
+    - { name: PARENT,  value: $(params.parent) }
+    script: |
+      #!/usr/bin/env bash
+      . $(workspaces.artifacts.path)/storage.env
+      . $(workspaces.artifacts.path)/source.env
+      PARENT=$(echo "${PARENT}" | tr -d \\n)
+      renelick node make \
+          name="${TREE}-${REVISION}-docker" \
+          kind="vixi.docker" \
+          parent="${PARENT}" \
+          data.image="docker.io/gtucker/kernel-image:${UUID}" \
+          data.revision__json="$(workspaces.artifacts.path)/revision.json" \
+          data.params__json="$(workspaces.artifacts.path)/params.json" \
+      | renelick node add - | tee $(results.node-id.path)
+---
