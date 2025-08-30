@@ -68,7 +68,7 @@ spec:
             - /bin/bash
             - -c
             - |
-              TO_DELETE=$(kubectl get taskrun -o json | jq -r '.items[] | select(.status.completionTime) | select(.metadata.labels."tekton.dev/task").metadata.name')
+              TO_DELETE=$(kubectl get taskrun -o json | jq -r '.items[] | select(.status.completionTime) | select(.metadata.labels."tekton.dev/pipeline" == null)| select(.metadata.labels."tekton.dev/task").metadata.name')
               if [ -n "$TO_DELETE" ]; then
                 kubectl delete taskrun ${TO_DELETE}
               fi
