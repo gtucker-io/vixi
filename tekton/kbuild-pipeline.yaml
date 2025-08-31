@@ -1,0 +1,196 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2025 Guillaume Tucker
+
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: kbuild
+  namespace: vixi
+spec:
+  params:
+  -   name: uuid
+  -   name: storage
+  -   name: tree
+  -   name: url
+  -   name: revision
+  - { name: arch,       default: 'x86_64'                            }
+  - { name: defconfig,  default: 'defconfig'                         }
+  - { name: opts,       default: ''                                  }
+  - { name: cc,         default: 'gcc'                               }
+  - { name: ccver,      default: '14.2'                              }
+  - { name: ccarch,     default: '-x86'                              }
+  - { name: registry,   default: 'registry.gitlab.com/gtucker/korg/' }
+  - { name: clean,      default: 'skip'                              }
+  workspaces:
+  - name: sandbox
+  - name: artifacts
+  - name: scratch
+  tasks:
+
+  # ---------------------------------------------------------------------------
+  # root node
+  #
+  - name: root-node
+    taskRef:
+      name: kbuild-root-node
+    workspaces:
+    - name: scratch
+    - name: artifacts
+    params:
+    - { name: uuid,       value: $(params.uuid)       }
+    - { name: storage,    value: $(params.storage)    }
+    - { name: clean,      value: $(params.clean)      }
+    - { name: tree,       value: $(params.tree)       }
+    - { name: url,        value: $(params.url)        }
+    - { name: revision,   value: $(params.revision)   }
+    - { name: arch,       value: $(params.arch)       }
+    - { name: defconfig,  value: $(params.defconfig)  }
+    - { name: opts,       value: $(params.opts)       }
+    - { name: cc,         value: $(params.cc)         }
+    - { name: ccver,      value: $(params.ccver)      }
+    - { name: ccarch,     value: $(params.ccarch)     }
+
+  # ---------------------------------------------------------------------------
+  # build scripts
+  #
+  - name: scripts
+    runAfter:
+    - root-node
+    taskRef:
+      name: kbuild-scripts
+    workspaces:
+    - name: sandbox
+    - name: artifacts
+
+  # ---------------------------------------------------------------------------
+  # checkout
+  #
+  - &step-task
+    name: checkout
+    runAfter:
+    - scripts
+    taskRef:
+      name: kbuild-step
+    workspaces:
+    - name: sandbox
+    - name: artifacts
+    params:
+    - { name: step,        value: checkout                                  }
+    - { name: image,       value: alpine/git:v2.49.1                        }
+  - &result-task
+    name: checkout-result
+    runAfter:
+    - checkout
+    taskRef:
+      name: kbuild-result
+    workspaces:
+    - name: sandbox
+    - name: artifacts
+    params:
+    - { name: step,        value: checkout                                  }
+    - { name: parent,      value: $(tasks.root-node.results.node-id)        }
+
+  # ToDo: group defconfig + image (+ dts) + modules in a single task with
+  # several steps and keep the root node as the parent for each step?  Lineage
+  # provides the order of the build steps, this could be improved with ordered
+  # child nodes too as per https://gitlab.com/gtucker.io/renelick/-/issues/66
+
+  # ---------------------------------------------------------------------------
+  # defconfig
+  #
+  - <<: *step-task
+    name: defconfig
+    runAfter:
+    - checkout
+    params:
+    - &ccimage
+      name: image
+      value: $(params.registry)$(params.cc):$(params.ccver)-x86$(params.ccarch)
+    - name: step
+      value: defconfig
+  - <<: *result-task
+    name: defconfig-result
+    runAfter:
+    - defconfig
+    - checkout-result
+    params:
+    - { name: step,        value: defconfig                                 }
+    - { name: parent,      value: $(tasks.checkout-result.results.node-id)  }
+
+  # ---------------------------------------------------------------------------
+  # image
+  #
+  - <<: *step-task
+    name: image
+    runAfter:
+    - defconfig
+    params:
+    - <<: *ccimage
+    - { name: step, value: image }
+  - <<: *result-task
+    name: image-result
+    runAfter:
+    - image
+    - defconfig-result
+    params:
+    - { name: step,        value: image                                     }
+    - { name: parent,      value: $(tasks.defconfig-result.results.node-id) }
+
+  # ---------------------------------------------------------------------------
+  # modules
+  #
+  - <<: *step-task
+    name: modules
+    runAfter:
+    - image
+    params:
+    - <<: *ccimage
+    - { name: step, value: modules }
+  - <<: *result-task
+    name: modules-result
+    runAfter:
+    - modules
+    - image-result
+    params:
+    - { name: step,        value: modules                                   }
+    - { name: parent,      value: $(tasks.image-result.results.node-id)     }
+
+  # ---------------------------------------------------------------------------
+  # Docker image for KubeVirt
+  #
+  - name: docker-image
+    runAfter:
+    - image
+    taskRef:
+      name: kbuild-docker-image
+    workspaces:
+    - name: sandbox
+    - name: artifacts
+    - name: scratch
+    params:
+    - { name: parent, value: $(tasks.root-node.results.node-id) }
+
+  # ---------------------------------------------------------------------------
+  # cleanup
+  #
+  finally:
+  - name: cleanup
+    taskSpec:
+      volumes:
+      - name: api-key
+        secret:
+          secretName: api-key
+      steps:
+      # ToDo: add summary node with end time, task status,
+      # flat build script and log artifacts
+      - name: complete-task
+        image: registry.gitlab.com/gtucker.io/renelick:main
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: api-key
+          mountPath: /home/renelick/.config/renelick
+        env:
+        - { name: UUID, value: $(params.uuid) }
+        script: |
+          [ -n "${UUID}" ] && renelick task complete "${UUID}"
