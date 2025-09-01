@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 #
-# Copyright (C) 2024 Guillaume Tucker
+# Copyright (C) 2024, 2025 Guillaume Tucker
 
 apiVersion: tekton.dev/v1
 kind: Task
@@ -14,12 +14,15 @@ spec:
   - name: directory
     image: alpine:3.22.1
     workingDir: $(workspaces.sandbox.path)
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
     script: |
       #!/usr/bin/env ash
       set -eo pipefail
 
       mkdir -p kbuild
-      chown 1000:1000 kbuild
+      mkdir -p mirror
       ls -l
 ---
 
@@ -45,6 +48,9 @@ spec:
   - name: mirror
     image: alpine/git:v2.49.1
     workingDir: $(workspaces.sandbox.path)/mirror
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
     script: |
       #!/usr/bin/env ash
       set -eo pipefail
