@@ -42,7 +42,7 @@ roleRef:
 # -----------------------------------------------------------------------------
 # mirror
 
-apiVersion: triggers.tekton.dev/v1beta1
+apiVersion: triggers.tekton.dev/v1beta1  # ToDo: use /v1
 kind: TriggerTemplate
 metadata:
   name: kbuild-mirror-trigger-template
@@ -128,7 +128,7 @@ spec:
   -  name: tree
   -  name: url
   -  name: revision
-  - {name: reset,      default: 'skip'}
+  - {name: clean,      default: 'skip'}
   - {name: arch,       default: 'x86_64'}
   - {name: defconfig,  default: 'defconfig'}
   - {name: opts,       default: ''}
@@ -137,11 +137,11 @@ spec:
   - {name: ccarch,     default: '-x86'}
   resourcetemplates:
   - apiVersion: tekton.dev/v1beta1
-    kind: TaskRun
+    kind: PipelineRun
     metadata:
       generateName: kbuild-$(tt.params.tree)-$(tt.params.revision)-
     spec:
-      taskRef:
+      pipelineRef:
         name: kbuild
       podTemplate:
         affinity:
@@ -157,7 +157,15 @@ spec:
       - name: sandbox
         persistentVolumeClaim:
           claimName: kbuild-sandbox
-      - name: tmp
+      - name: artifacts
+        volumeClaimTemplate:
+          spec:
+            accessModes:
+            - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
+      - name: scratch
         emptyDir: {}
       params:
       - {name: uuid,       value: $(tt.params.uuid)}
@@ -165,7 +173,7 @@ spec:
       - {name: tree,       value: $(tt.params.tree)}
       - {name: url,        value: $(tt.params.url)}
       - {name: revision,   value: $(tt.params.revision)}
-      - {name: reset,      value: $(tt.params.reset)}
+      - {name: clean,      value: $(tt.params.clean)}
       - {name: arch,       value: $(tt.params.arch)}
       - {name: defconfig,  value: $(tt.params.defconfig)}
       - {name: opts,       value: $(tt.params.opts)}
@@ -185,7 +193,7 @@ spec:
   - {name: tree,       value: $(body.tree)}
   - {name: url,        value: $(body.url)}
   - {name: revision,   value: $(body.revision)}
-  - {name: reset,      value: $(body.reset)}
+  - {name: clean,      value: $(body.clean)}
   - {name: arch,       value: $(body.arch)}
   - {name: defconfig,  value: $(body.defconfig)}
   - {name: opts,       value: $(body.opts)}
