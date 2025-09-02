@@ -5,7 +5,7 @@
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: kbuild-init
+  name: kbuild-sandbox-init
   namespace: vixi
 spec:
   workspaces:
@@ -88,6 +88,7 @@ spec:
       }
 
       [ -d "$tree".git ] || {
+          echo "Initialising $tree.git"
           git clone --mirror --verbose --reference=linux.git "$url" "$tree".git
       }
 

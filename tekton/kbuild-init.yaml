@@ -9,7 +9,7 @@ metadata:
   namespace: vixi
 spec:
   taskRef:
-    name: kbuild-init
+    name: kbuild-sandbox-init
   timeout: "0h10m0s"
   workspaces:
   - name: sandbox
