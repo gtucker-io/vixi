@@ -29,13 +29,12 @@ spec:
   tasks:
 
   # ---------------------------------------------------------------------------
-  # root node
+  # init
   #
-  - name: root-node
+  - name: init
     taskRef:
-      name: kbuild-root-node
+      name: kbuild-init
     workspaces:
-    - name: scratch
     - name: artifacts
     params:
     - { name: uuid,       value: $(params.uuid)       }
@@ -56,7 +55,7 @@ spec:
   #
   - name: scripts
     runAfter:
-    - root-node
+    - init
     taskRef:
       name: kbuild-scripts
     workspaces:
@@ -89,7 +88,6 @@ spec:
     - name: artifacts
     params:
     - { name: step,        value: checkout                                  }
-    - { name: parent,      value: $(tasks.root-node.results.node-id)        }
 
   # ToDo: group defconfig + image (+ dts) + modules in a single task with
   # several steps and keep the root node as the parent for each step?  Lineage
@@ -169,7 +167,11 @@ spec:
     - name: artifacts
     - name: scratch
     params:
-    - { name: parent, value: $(tasks.root-node.results.node-id) }
+    - { name: parent, value: $(tasks.image-result.results.node-id) }
+
+  # ToDo: Add a summary node as a child node of the last result node
+  # i.e. "modules" with a summary of the results from all the nodes in the
+  # lineage up to this point (with a "vixi.summary" schema).
 
   # ---------------------------------------------------------------------------
   # cleanup

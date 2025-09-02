@@ -5,7 +5,7 @@
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: kbuild-root-node
+  name: kbuild-init
   namespace: vixi
 spec:
   params:
@@ -29,7 +29,6 @@ spec:
     secret:
       secretName: api-key
   workspaces:
-  - name: scratch
   - name: artifacts
   steps:
   - name: root-node
@@ -82,10 +81,7 @@ spec:
       EOF
 
       if [ -n "${UUID}" ]; then
-          renelick task get "${UUID}" > $(workspaces.scratch.path)/task.json
-          task_param="task__json=$(workspaces.scratch.path)/task.json"
-      else
-          task_param="task__null="
+          renelick task get "${UUID}" > $(workspaces.artifacts.path)/task.json
       fi
 
       echo "Build parameters:"
@@ -97,13 +93,6 @@ spec:
           ccver="${CCVER}" \
           ccarch="${CCARCH}" \
       | tee $(workspaces.artifacts.path)/params.json
-
-      renelick node make \
-          name="${TREE}-${REVISION}" \
-          kind="vixi.kbuild" \
-          ${task_param} \
-          data.params__json="$(workspaces.artifacts.path)/params.json" \
-      | renelick node add - | tee $(results.node-id.path)
 ---
 
 apiVersion: tekton.dev/v1
@@ -158,6 +147,8 @@ spec:
       git checkout FETCH_HEAD
       git log -n1
       du -hs .git
+      echo "export DESCRIBE=\$(git describe)" \
+           >> $(workspaces.artifacts.path)/source.env
       EOF
 
       cat "${SCRIPT}"
@@ -291,8 +282,8 @@ metadata:
   namespace: vixi
 spec:
   params:
-  - name: parent
-  - name: step
+  -   name: step
+  - { name: parent, default: '' }
   results:
   - name: node-id
     description: Id of the database node with the task's result
@@ -325,13 +316,14 @@ spec:
       #!/usr/bin/env bash
       . $(workspaces.artifacts.path)/source.env
       cd "${TREE}"
-      [ -n "${PARENT}" ] && popt="parent=$( echo ${PARENT} | tr -d \n)"
+      [ -n "${PARENT}" ] && parent_opt="parent=$(echo ${PARENT} | tr -d \n)"
+      task_json="$(workspaces.artifacts.path)/task.json"
+      [ -f "${task_json}" ] && task_opt="task__json=${task_json}"
       revision="$(workspaces.artifacts.path)/revision.json"
-      describe="$(git describe)"
       [ -f "${revision}" ] || {
           renelick node make \
               sha1="$(git show --format=%H -s)" \
-              describe="${describe}" \
+              describe="${DESCRIBE}" \
               subject="$(git show --format=%s -s)" \
               tree="${TREE}" \
               url="${URL}" \
@@ -339,9 +331,10 @@ spec:
       }
       TIME_PX="$(workspaces.artifacts.path)/${STEP}"
       renelick node make \
-          name="${TREE}-${describe}-${STEP}" \
+          name="${TREE}:${DESCRIBE}:${STEP}" \
           kind="vixi.kbuild" \
-          $popt \
+          ${parent_opt} \
+          ${task_opt} \
           data.start-time__file="${TIME_PX}-start-time" \
           data.end-time__file="${TIME_PX}-end-time" \
           data.step="${STEP}" \
@@ -366,7 +359,9 @@ spec:
           echo "WARNING - no task UUID defined, artifacts will not be saved"
           exit 0
       }
-      PARENT=$(echo "${PARENT}" | tr -d \\n)
+      parent_opt="parent=$(echo ${PARENT} | tr -d \n)"
+      task_json="$(workspaces.artifacts.path)/task.json"
+      [ -f "${task_json}" ] && task_opt="task__json=${task_json}"
       find -L . -type f | while read file; do
           echo "Uploading $file"
           url=$(renelick storage upload "${file}" \
@@ -375,7 +370,8 @@ spec:
           renelick node make \
               name="$(basename ${file})" \
               kind="artifact-v1" \
-              parent="${PARENT}" \
+              ${parent_opt} \
+              ${task_opt} \
               data.url="${url}" \
               data.storage="ssh" \
           | renelick node add -
@@ -440,11 +436,14 @@ spec:
       #!/usr/bin/env bash
       . $(workspaces.artifacts.path)/storage.env
       . $(workspaces.artifacts.path)/source.env
-      PARENT=$(echo "${PARENT}" | tr -d \\n)
+      parent_opt="parent=$(echo ${PARENT} | tr -d \n)"
+      task_json="$(workspaces.artifacts.path)/task.json"
+      [ -f "${task_json}" ] && task_opt="task__json=${task_json}"
       renelick node make \
-          name="${TREE}-${REVISION}-docker" \
+          name="${TREE}:${DESCRIBE}:docker" \
           kind="vixi.docker" \
-          parent="${PARENT}" \
+          ${parent_opt} \
+          ${task_opt} \
           data.image="docker.io/gtucker/kernel-image:${UUID}" \
           data.revision__json="$(workspaces.artifacts.path)/revision.json" \
           data.params__json="$(workspaces.artifacts.path)/params.json" \
