@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 #
-# Copyright (C) 2024 Guillaume Tucker
+# Copyright (C) 2024, 2025 Guillaume Tucker
 
 # -----------------------------------------------------------------------------
 # Service Account
@@ -42,7 +42,7 @@ roleRef:
 # -----------------------------------------------------------------------------
 # mirror
 
-apiVersion: triggers.tekton.dev/v1beta1  # ToDo: use /v1
+apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerTemplate
 metadata:
   name: kbuild-mirror-trigger-template
@@ -214,3 +214,60 @@ spec:
     - ref: kbuild-trigger-binding
     template:
       ref: kbuild-trigger-template
+---
+
+# -----------------------------------------------------------------------------
+# boot
+
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: boot-trigger-template
+  namespace: vixi
+spec:
+  params:
+  - name: kernel-image
+  resourcetemplates:
+  - apiVersion: tekton.dev/v1beta1
+    kind: PipelineRun
+    metadata:
+      generateName: boot-
+    spec:
+      pipelineRef:
+        name: boot
+      serviceAccountName: kubevirt-sa
+      podTemplate:
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: vixi/kvm-worker
+                  operator: In
+                  values: ["true"]
+      timeout: "1h0m0s"
+      params:
+      - { name: kernel-image, value: $(tt.params.kernel-image) }
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: boot-trigger-binding
+  namespace: vixi
+spec:
+  params:
+  - {name: kernel-image, value: $(body.kernel-image)}
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: boot-trigger-listener
+  namespace: vixi
+spec:
+  serviceAccountName: trigger-sa
+  triggers:
+  - name: boot-trigger
+    bindings:
+    - ref: boot-trigger-binding
+    template:
+      ref: boot-trigger-template

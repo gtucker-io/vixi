@@ -37,11 +37,11 @@ metadata:
 spec:
   params:
   - name: vmName
-    default: ubuntu-vixi
-  - name: privateKeySecretName
-    default: vixi-client-private-key
+    default: $(context.pipelineRun.name)-vm
   - name: publicKeySecretName
-    default: vixi-client-public-key
+    default: $(context.pipelineRun.name)-public-key
+  - name: privateKeySecretName
+    default: $(context.pipelineRun.name)-private-key
   - name: kernel-image
 
   tasks:
