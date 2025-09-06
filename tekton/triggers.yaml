@@ -226,6 +226,9 @@ metadata:
   namespace: vixi
 spec:
   params:
+  - name: uuid
+  - name: parent
+  - name: storage
   - name: kernel-image
   resourcetemplates:
   - apiVersion: tekton.dev/v1beta1
@@ -247,6 +250,9 @@ spec:
                   values: ["true"]
       timeout: "1h0m0s"
       params:
+      - { name: uuid,         value: $(tt.params.uuid)         }
+      - { name: parent,       value: $(tt.params.parent)       }
+      - { name: storage,      value: $(tt.params.storage)      }
       - { name: kernel-image, value: $(tt.params.kernel-image) }
 ---
 apiVersion: triggers.tekton.dev/v1beta1
@@ -256,7 +262,10 @@ metadata:
   namespace: vixi
 spec:
   params:
-  - {name: kernel-image, value: $(body.kernel-image)}
+  - { name: uuid,         value: $(body.uuid)         }
+  - { name: parent,       value: $(body.parent)       }
+  - { name: storage,      value: $(body.storage)      }
+  - { name: kernel-image, value: $(body.kernel-image) }
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: EventListener

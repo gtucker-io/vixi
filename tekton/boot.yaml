@@ -2,6 +2,13 @@
 #
 # Copyright (C) 2024, 2025 Guillaume Tucker
 
+# Sample Renelick command to trigger a pipeline run:
+#
+# rk task run tekton \
+#     name=boot \
+#     kernel-image=docker.io/gtucker/kernel-image:f18f88ba-3e13-4942-a366-af02d13ff26f \
+#     parent=68c17b99340dd1e4781f2f38
+
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
@@ -29,7 +36,7 @@ spec:
       fsck.ext4 -p disk.img
 ---
 
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: boot
@@ -42,9 +49,22 @@ spec:
     default: $(context.pipelineRun.name)-public-key
   - name: privateKeySecretName
     default: $(context.pipelineRun.name)-private-key
+  - name: uuid
+  - name: parent
+  - name: storage
   - name: kernel-image
-
+  results:
+  - name: node-id
+    value: $(tasks.summary.results.node-id)
+    description: Id of the boot summary node in the database
   tasks:
+    # ToDo: Download parent node and get kernel Docker image name from it as
+    # well as revision, build metadata etc. to populate an environment file in
+    # the shared volume like for the kbuild pipeline.
+    #
+    # ToDo: Upload artifacts with path prefix e.g.:
+    # ${TREE}/${BRANCH}/${DESCRIBE}/${ARCH}
+
   - name: generate-ssh-keys
     taskRef:
       kind: Task
@@ -112,6 +132,9 @@ spec:
                   - name: cloudinitdisk
                     disk:
                       bus: virtio
+                  - name: sandbox
+                    disk:
+                      bus: virtio
                   interfaces:
                   - name: default
                     masquerade: {}
@@ -135,8 +158,11 @@ spec:
                 cloudInitConfigDrive:
                   userData: |
                     #cloud-config
+              - name: sandbox
+                persistentVolumeClaim:
+                  claimName: boot-sandbox
 
-  - name: hello
+  - name: payload
     taskRef:
       kind: Task
       name: execute-in-vm
@@ -149,19 +175,138 @@ spec:
       value: "$(params.privateKeySecretName)"
     - name: script
       value: |
-        whoami
-        pwd
-        df -h
         lsblk
-        uname -a
-        echo "--- CPU ---"
-        head /proc/cpuinfo
-        echo "--- Memory ---"
-        head /proc/meminfo
-        sudo dmesg | head
-        ps auxf
+        sudo dmesg | head -2
+
+        sudo mkdir -p /mnt/sandbox
+        sudo mount /dev/vdc /mnt/sandbox
+        sudo mkdir -p "/mnt/sandbox/$(context.pipelineRun.uid)"
+        sudo chown ubuntu: -R "/mnt/sandbox/$(context.pipelineRun.uid)"
+        export ARTIFACTS="/mnt/sandbox/$(context.pipelineRun.uid)"
+
+        sudo dmesg > "${ARTIFACTS}/dmesg.txt"
+        cat /proc/cpuinfo > "${ARTIFACTS}/cpuinfo.txt"
+        cat /proc/meminfo > "${ARTIFACTS}/meminfo.txt"
+        echo '{
+          "system": "'"$(uname -a)"'",
+          "nproc": "'"$(nproc)"'"
+        }' > "${ARTIFACTS}/metadata.json"
+
+        sudo umount /mnt/sandbox
+
+  - name: summary
+    runAfter:
+    - payload
+    taskSpec:
+      results:
+      - name: node-id
+      volumes:
+      - name: api-key
+        secret:
+          secretName: api-key
+      - name: sandbox
+        persistentVolumeClaim:
+          claimName: boot-sandbox
+      steps:
+      - name: summary
+        image: registry.gitlab.com/gtucker.io/renelick:main
+        volumeMounts:
+        - name: api-key
+          mountPath: /home/renelick/.config/renelick
+        - name: sandbox
+          mountPath: /home/renelick/sandbox
+        securityContext:
+          privileged: True
+          runAsUser: 0
+        env:
+        - { name: UUID,    value: $(params.uuid)    }
+        - { name: PARENT,  value: $(params.parent)  }
+        - { name: STORAGE, value: $(params.storage) }
+        script: |
+          [ -z "${PARENT}" ] && {
+              echo "ERROR - no parent node defined"
+              exit 1
+          }
+          [ -e /dev/loop0 ] || mknod /dev/loop0 b 7 0
+          loopdev=$(losetup --find --show sandbox/disk.img)
+          mkdir -p /tmp/sandbox-disk
+          mount sandbox/disk.img /tmp/sandbox-disk
+          export ARTIFACTS="/tmp/sandbox-disk/$(context.pipelineRun.uid)"
+
+          [ -z "${STORAGE}" ] && {
+              echo "WARNING - no storage defined, artifacts will not be saved"
+              exit 0
+          }
+
+          [ -d "${ARTIFACTS}" ] && {
+              cd "${ARTIFACTS}"
+              [ -n "${UUID}" ] && {
+                  su renelick bash -c 'renelick task get "${UUID}" > task.json'
+              } && {
+                  export TOPT="task__json=task.json"
+              } || {
+                  echo "WARNING - failed to get task from UUID"
+              }
+              su renelick bash -c '\
+                  renelick task get "${UUID}" > task.json; \
+                  renelick node make \
+                      name="boot" \
+                      kind="vixi.boot" \
+                      parent="${PARENT}" \
+                      ${TOPT} \
+                      data__json=metadata.json \
+                  | renelick node add - | tee $(results.node-id.path); \
+              '
+              export POPT="parent=$(cat $(results.node-id.path) | tr -d \n)"
+              [ -n "${STORAGE}" ] && [ -n "${TOPT}" ] && {
+                  find . -type f -not -name "*.json" | while read path; do
+                      export FILE="$(basename ${path})"
+                      echo "Uploading ${FILE}"
+                      export URL=$(su renelick bash -c '\
+                          renelick storage upload "${FILE}" \
+                          --storage="${STORAGE}" \
+                          --dest="boot-${UUID}" \
+                      ')
+                      echo "URL ${URL}"
+                      su renelick bash -c '\
+                          renelick node make \
+                              name="${FILE}" \
+                              kind="artifact-v1" \
+                              ${POPT} \
+                              ${TOPT} \
+                              data.url="${URL}" \
+                              data.storage="ssh" \
+                          | renelick node add -; \
+                      '
+                  done
+              } || {
+                  echo "WARNING - not saving artifacts"
+              }
+              cd "${HOME}"
+              rm -rf "${ARTIFACTS}"
+          }
+
+          umount /tmp/sandbox-disk
+          losetup --detach "${loopdev}"
 
   finally:
+  - name: complete
+    taskSpec:
+      volumes:
+      - name: api-key
+        secret:
+          secretName: api-key
+      steps:
+      - name: summary
+        image: registry.gitlab.com/gtucker.io/renelick:main
+        volumeMounts:
+        - name: api-key
+          mountPath: /home/renelick/.config/renelick
+        env:
+        - { name: UUID,    value: $(params.uuid)    }
+        script: |
+          [ -n "${UUID}" ] && renelick task complete "${UUID}"
+
   - name: cleanup
     taskRef:
       kind: Task
@@ -176,4 +321,7 @@ spec:
     - name: timeout
       value: "5m"
     - name: script
-      value: ""
+      value: |
+        # ToDo: add status to summary node
+        echo "Result $(tasks.payload.status)"
+        echo "Tasks $(tasks.status)"
