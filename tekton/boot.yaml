@@ -69,72 +69,72 @@ spec:
     params:
     - name: manifest
       value: |
-            apiVersion: kubevirt.io/v1
-            kind: VirtualMachine
+        apiVersion: kubevirt.io/v1
+        kind: VirtualMachine
+        metadata:
+          name: $(params.vmName)
+        spec:
+          running: false
+          template:
             metadata:
-              name: $(params.vmName)
+              labels:
+                kubevirt.io/domain: $(params.vmName)
             spec:
-              running: false
-              template:
-                metadata:
-                  labels:
-                    kubevirt.io/domain: $(params.vmName)
-                spec:
-                  accessCredentials:
-                    - sshPublicKey:
-                        source:
-                          secret:
-                            secretName: $(params.publicKeySecretName)
-                        propagationMethod:
-                          configDrive: {}
-                  hostname: $(params.vmName)
-                  nodeSelector:
-                    vixi/kvm-worker: "true"
-                  domain:
-                    cpu:
-                      cores: 2
-                      sockets: 1
-                      threads: 1
-                    firmware:
-                      kernelBoot:
-                        container:
-                          image: $(params.kernel-image)
-                          # ToDo: include modules in initrd.cpio
-                          # initrdPath: /boot/initrd.cpio
-                          kernelPath: /boot/bzImage
-                          imagePullPolicy: IfNotPresent
-                        kernelArgs: console=ttyS0 root=/dev/vda1 rw setenforce 0
-                    devices:
-                      disks:
-                        - name: containerdisk
-                          disk:
-                            bus: virtio
-                        - name: cloudinitdisk
-                          disk:
-                            bus: virtio
-                      interfaces:
-                        - name: default
-                          masquerade: {}
-                          ports:
-                            - name: ssh
-                              port: 22
-                      networkInterfaceMultiqueue: true
-                      rng: {}
-                    resources:
-                      requests:
-                        memory: 1Gi
-                  networks:
-                    - name: default
-                      pod: {}
-                  terminationGracePeriodSeconds: 0
-                  volumes:
+              accessCredentials:
+              - sshPublicKey:
+                  source:
+                    secret:
+                      secretName: $(params.publicKeySecretName)
+                  propagationMethod:
+                    configDrive: {}
+              hostname: $(params.vmName)
+              nodeSelector:
+                vixi/kvm-worker: "true"
+              domain:
+                cpu:
+                  cores: 2
+                  sockets: 1
+                  threads: 1
+                firmware:
+                  kernelBoot:
+                    container:
+                      image: $(params.kernel-image)
+                      # ToDo: include modules in initrd.cpio
+                      # initrdPath: /boot/initrd.cpio
+                      kernelPath: /boot/bzImage
+                      imagePullPolicy: IfNotPresent
+                    kernelArgs: console=ttyS0 root=/dev/vda1 rw setenforce 0
+                devices:
+                  disks:
                   - name: containerdisk
-                    containerDisk:
-                      image: quay.io/containerdisks/ubuntu:24.04
+                    disk:
+                      bus: virtio
                   - name: cloudinitdisk
-                    cloudInitConfigDrive:
-                      userData: |
-                        #cloud-config
+                    disk:
+                      bus: virtio
+                  interfaces:
+                  - name: default
+                    masquerade: {}
+                    ports:
+                    - name: ssh
+                      port: 22
+                  networkInterfaceMultiqueue: true
+                  rng: {}
+                resources:
+                  requests:
+                    memory: 1Gi
+              networks:
+              - name: default
+                pod: {}
+              terminationGracePeriodSeconds: 0
+              volumes:
+              - name: containerdisk
+                containerDisk:
+                  image: quay.io/containerdisks/ubuntu:24.04
+              - name: cloudinitdisk
+                cloudInitConfigDrive:
+                  userData: |
+                    #cloud-config
 
   - name: hello
     taskRef:
@@ -143,23 +143,23 @@ spec:
     runAfter:
     - create-vm-from-manifest
     params:
-        - name: vmName
-          value: "$(params.vmName)"
-        - name: secretName
-          value: "$(params.privateKeySecretName)"
-        - name: script
-          value: |
-            whoami
-            pwd
-            df -h
-            lsblk
-            uname -a
-            echo "--- CPU ---"
-            head /proc/cpuinfo
-            echo "--- Memory ---"
-            head /proc/meminfo
-            sudo dmesg | head
-            ps auxf
+    - name: vmName
+      value: "$(params.vmName)"
+    - name: secretName
+      value: "$(params.privateKeySecretName)"
+    - name: script
+      value: |
+        whoami
+        pwd
+        df -h
+        lsblk
+        uname -a
+        echo "--- CPU ---"
+        head /proc/cpuinfo
+        echo "--- Memory ---"
+        head /proc/meminfo
+        sudo dmesg | head
+        ps auxf
 
   finally:
   - name: cleanup
@@ -167,13 +167,13 @@ spec:
       kind: Task
       name: cleanup-vm
     params:
-        - name: vmName
-          value: "$(params.vmName)"
-        - name: secretName
-          value: "$(params.privateKeySecretName)"
-        - name: delete
-          value: "true"
-        - name: timeout
-          value: "5m"
-        - name: script
-          value: ""
+    - name: vmName
+      value: "$(params.vmName)"
+    - name: secretName
+      value: "$(params.privateKeySecretName)"
+    - name: delete
+      value: "true"
+    - name: timeout
+      value: "5m"
+    - name: script
+      value: ""
