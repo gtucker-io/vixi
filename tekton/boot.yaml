@@ -2,6 +2,33 @@
 #
 # Copyright (C) 2024 Guillaume Tucker
 
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: boot-sandbox-init
+  namespace: vixi
+spec:
+  workspaces:
+  - name: sandbox
+  steps:
+  - name: directory
+    image: alpine:3.22.1
+    workingDir: $(workspaces.sandbox.path)
+    script: |
+      #!/usr/bin/env ash
+      set -eo pipefail
+
+      apk add e2fsprogs  # ToDo: include in Docker image
+
+      [ -f disk.img ] || {
+          truncate -s 10G disk.img
+          mkfs.ext4 disk.img
+      }
+
+      ls -lh
+      fsck.ext4 -p disk.img
+---
+
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:

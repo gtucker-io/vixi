@@ -16,3 +16,19 @@ spec:
   resources:
     requests:
       storage: 100Gi
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: boot-sandbox
+  namespace: vixi
+  annotations:
+    user.custom.annotation/storage.thick-provisioned: "true"
+spec:
+  accessModes:
+  - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 12Gi
