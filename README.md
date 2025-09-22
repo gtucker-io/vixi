@@ -21,8 +21,8 @@ incrementally so as to keep it fast.
   * ☑ checkout the git revision with persistent mirror
   * ☑ build the kernel using a korg container
   * ☑ upload artifacts to storage via SSH
-* ☐ kboot task
-  * ☑ boot a kernel image using KVM _PoC pending merge_
+* ☑ kboot pipeline
+  * ☑ boot a kernel image using KVM
 * ☐ ktest task
   * run some tests in the VM
 * ☐ kunit task
@@ -84,8 +84,12 @@ and LPC 2024.  It's a first experimental step towards putting this in practice.
 ### Booting with KVM
 
 The current approach for booting kernels is via KVM and KubeVirt inside a
-Tekton pipeline.  A PoC is already working but not merged into the `main`
-branch yet.
+Tekton pipeline.  This relies on having a thin wrapper Docker image around the
+kernel image to boot the VM.  Support for other runtimes should be enabled too,
+for example with KVM-enabled QEMU directly on a bare-metal host machine.  Then
+the orchestrator can decide which runtime to use for which tests and schedule
+tasks accordingly.  The main advantage of KubeVirt is that the underlying Cloud
+infrastructure can scale automatically.
 
 ## Setup
 
