@@ -51,21 +51,25 @@ spec:
     securityContext:
       runAsNonRoot: true
       runAsUser: 1000
+    env:
+    - { name: TREE,       value: $(params.tree)      }
+    - { name: URL,        value: $(params.url)       }
+    - { name: RESET,      value: $(params.reset)     }
     script: |
       #!/usr/bin/env ash
       set -eo pipefail
 
       date -Iseconds > "$(workspaces.tmp.path)/mirror-start"
 
-      tree=$(params.tree)
-      url=$(params.url)
-      echo "Tree: $(params.tree)"
-      echo "URL:  $(params.url)"
+      tree="${TREE}"
+      url="${URL}"
+      echo "Tree: ${TREE}"
+      echo "URL:  ${URL}"
 
       echo "Current mirrors:"
       find . -type d -name "*.git" | xargs du -hs
 
-      [ "$(params.reset)" == "all" ] && {
+      [ "${RESET}" == "all" ] && {
           echo "Resetting all the mirrors"
           rm -rf *.git
       }
@@ -82,17 +86,17 @@ spec:
               https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
       fi
 
-      [ "$(params.reset)" == "true" ] && {
-          echo Resetting mirror for $tree.git
-          rm -rf "$tree.git"
+      [ "${RESET}" == "true" ] && {
+          echo Resetting mirror for ${TREE}.git
+          rm -rf "${TREE}.git"
       }
 
-      [ -d "$tree".git ] || {
-          echo "Initialising $tree.git"
-          git clone --mirror --verbose --reference=linux.git "$url" "$tree".git
+      [ -d "${TREE}".git ] || {
+          echo "Initialising ${TREE}.git"
+          git clone --mirror --verbose --reference=linux.git "${URL}" "${TREE}".git
       }
 
-      cd "$tree".git
+      cd "${TREE}".git
       pwd
       git remote set-url origin "$url"
       git remote update --prune
@@ -110,33 +114,37 @@ spec:
     volumeMounts:
     - name: api-key
       mountPath: /home/renelick/.config/renelick
+    env:
+    - { name: UUID,       value: $(params.uuid)      }
+    - { name: TREE,       value: $(params.tree)      }
+    - { name: URL,        value: $(params.url)       }
     script: |
       #!/usr/bin/env bash
       set -eo pipefail
 
       git config --global --add safe.directory \
-          "$(workspaces.sandbox.path)/mirror/$(params.tree).git"
+          "$(workspaces.sandbox.path)/mirror/${TREE}.git"
       git log -n1 > $(workspaces.tmp.path)/git-head.txt
-      if [ -n "$(params.uuid)" ]; then
-          renelick task get $(params.uuid) > $(workspaces.tmp.path)/task.json
+      if [ -n "${UUID}" ]; then
+          renelick task get ${UUID} > $(workspaces.tmp.path)/task.json
           task_param="task__json=$(workspaces.tmp.path)/task.json"
       else
           task_param="task__null="
       fi
       renelick node make \
-          name="kbuild-mirror-$(params.tree)" \
+          name="kbuild-mirror-${TREE}" \
           kind="vixi.mirror" \
           ${task_param} \
           data.revision.sha1="${sha1}" \
           data.revision.describe="$(git describe)" \
           data.revision.subject="$(git show --format=%s -s)" \
-          data.revision.tree="$(params.tree)" \
-          data.revision.url="$(params.url)" \
+          data.revision.tree="${TREE}" \
+          data.revision.url="${URL}" \
           data.git-head__file="$(workspaces.tmp.path)/git-head.txt" \
           data.start-time="$(cat $(workspaces.tmp.path)/mirror-start)" \
           data.end-time="$(cat $(workspaces.tmp.path)/mirror-end)" \
       | renelick node add -
-      [ -n "$(params.uuid)" ] && renelick task complete $(params.uuid)
+      [ -n "${UUID}" ] && renelick task complete "${UUID}"
 ---
 
 apiVersion: tekton.dev/v1
