@@ -1,2 +1,3 @@
 *.deb
 secrets
+__pycache__
