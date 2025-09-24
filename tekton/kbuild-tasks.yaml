@@ -119,32 +119,53 @@ spec:
     - { name: TREE,       value: $(params.tree)      }
     - { name: URL,        value: $(params.url)       }
     script: |
-      #!/usr/bin/env bash
-      set -eo pipefail
+      #!/usr/bin/env python
+      import json
+      import os
+      import subprocess
+      import renelick
+      import renelick.client
+      from renelick.client import NewNode as Node, NewNodeData as Data
+      from renelick.client.cli import globs
 
-      git config --global --add safe.directory \
-          "$(workspaces.sandbox.path)/mirror/${TREE}.git"
-      git log -n1 > $(workspaces.tmp.path)/git-head.txt
-      if [ -n "${UUID}" ]; then
-          renelick task get ${UUID} > $(workspaces.tmp.path)/task.json
-          task_param="task__json=$(workspaces.tmp.path)/task.json"
-      else
-          task_param="task__null="
-      fi
-      renelick node make \
-          name="kbuild-mirror-${TREE}" \
-          kind="vixi.mirror" \
-          ${task_param} \
-          data.revision.sha1="${sha1}" \
-          data.revision.describe="$(git describe)" \
-          data.revision.subject="$(git show --format=%s -s)" \
-          data.revision.tree="${TREE}" \
-          data.revision.url="${URL}" \
-          data.git-head__file="$(workspaces.tmp.path)/git-head.txt" \
-          data.start-time="$(cat $(workspaces.tmp.path)/mirror-start)" \
-          data.end-time="$(cat $(workspaces.tmp.path)/mirror-end)" \
-      | renelick node add -
-      [ -n "${UUID}" ] && renelick task complete "${UUID}"
+
+      def sh(cmd):
+          return subprocess.check_output(cmd.split()).decode('utf-8')
+
+
+      def ts(path):
+          with open(path, encoding='utf-8') as ts_file:
+              return ts_file.readline().strip()
+
+
+      UUID, TREE, URL = (os.getenv(key) for key in ('UUID', 'TREE', 'URL'))
+
+      globs.init()
+      rk = globs.get_api()
+
+      sh("git config --global --add safe.directory "
+         "$(workspaces.sandbox.path)/mirror/${TREE}.git")
+
+      node = rk.node.add(Node(
+          name=f'kbuild-mirror-{TREE}',
+          kind='vixi-mirror',
+          task=rk.task.get(UUID) if UUID else None,
+          data=Data.from_dict({
+              'revision': {
+                  'sha1': sh('git show --format=%H -s'),
+                  'describe': sh('git describe'),
+                  'tree': TREE,
+                  'url': URL,
+                  'git-head': sh("git log -n1"),
+              },
+              'start-time': ts('$(workspaces.tmp.path)/mirror-start'),
+              'end-time': ts('$(workspaces.tmp.path)/mirror-end'),
+          }),
+      ))
+      print(node.id)
+
+      if UUID:
+        rk.task.complete(UUID)
 ---
 
 apiVersion: tekton.dev/v1
