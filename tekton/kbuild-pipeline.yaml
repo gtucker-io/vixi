@@ -35,6 +35,7 @@ spec:
     taskRef:
       name: kbuild-init
     workspaces:
+    - name: sandbox
     - name: artifacts
     params:
     - { name: uuid,       value: $(params.uuid)       }
