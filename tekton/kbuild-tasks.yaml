@@ -12,7 +12,7 @@ spec:
   - name: sandbox
   steps:
   - name: directory
-    image: alpine:3.22.1
+    image: alpine/git:v2.49.1
     workingDir: $(workspaces.sandbox.path)
     securityContext:
       runAsNonRoot: true
@@ -23,6 +23,8 @@ spec:
 
       mkdir -p kbuild
       mkdir -p mirror
+      [ -d vixi ] || git clone https://gitlab.com/gtucker/vixi.git
+      (cd vixi; git fetch origin exp; git checkout FETCH_HEAD;)
       ls -l
 ---
 
