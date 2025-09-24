@@ -117,57 +117,21 @@ spec:
     - name: api-key
       mountPath: /home/renelick/.config/renelick
     env:
-    - { name: UUID,       value: $(params.uuid)      }
-    - { name: TREE,       value: $(params.tree)      }
-    - { name: URL,        value: $(params.url)       }
+    - { name: UUID,       value: $(params.uuid)                  }
+    - { name: TREE,       value: $(params.tree)                  }
+    - { name: URL,        value: $(params.url)                   }
+    - { name: PYTHONPATH, value: $(workspaces.sandbox.path)/vixi }
     script: |
       #!/usr/bin/env python
-      import json
       import os
-      import subprocess
-      import renelick
-      import renelick.client
-      from renelick.client import NewNode as Node, NewNodeData as Data
-      from renelick.client.cli import globs
-
-
-      def sh(cmd):
-          return subprocess.check_output(cmd.split()).decode('utf-8')
-
-
-      def ts(path):
-          with open(path, encoding='utf-8') as ts_file:
-              return ts_file.readline().strip()
-
+      import vixi
 
       UUID, TREE, URL = (os.getenv(key) for key in ('UUID', 'TREE', 'URL'))
-
-      globs.init()
-      rk = globs.get_api()
-
-      sh("git config --global --add safe.directory "
-         "$(workspaces.sandbox.path)/mirror/${TREE}.git")
-
-      node = rk.node.add(Node(
-          name=f'kbuild-mirror-{TREE}',
-          kind='vixi-mirror',
-          task=rk.task.get(UUID) if UUID else None,
-          data=Data.from_dict({
-              'revision': {
-                  'sha1': sh('git show --format=%H -s'),
-                  'describe': sh('git describe'),
-                  'tree': TREE,
-                  'url': URL,
-                  'git-head': sh("git log -n1"),
-              },
-              'start-time': ts('$(workspaces.tmp.path)/mirror-start'),
-              'end-time': ts('$(workspaces.tmp.path)/mirror-end'),
-          }),
-      ))
+      vixi.sh("git config --global --add safe.directory "
+              f"$(workspaces.sandbox.path)/mirror/{TREE}.git")
+      node = vixi.kbuild.mirror_node('$(workspaces.tmp.path)', UUID, TREE, URL)
       print(node.id)
-
-      if UUID:
-        rk.task.complete(UUID)
+      vixi.complete(UUID)
 ---
 
 apiVersion: tekton.dev/v1
