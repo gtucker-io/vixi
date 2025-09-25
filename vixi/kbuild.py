@@ -8,10 +8,10 @@ from renelick.client import NewNode as Node, NewNodeData as Data
 from .base import sh, read_string, rk_client
 
 
-def mirror_node(tmp, uuid, tree, url):
+def mirror_node(base):
     """Create a database node for the kbuild mirror task"""
+    uuid, tree, url = (os.getenv(key) for key in ('UUID', 'TREE', 'URL'))
     rk = rk_client()
-
     return rk.node.add(Node(
         name=f'kbuild-mirror-{tree}',
         kind='vixi-mirror',
@@ -24,7 +24,7 @@ def mirror_node(tmp, uuid, tree, url):
                 'url': url,
                 'git-head': sh("git log -n1"),
             },
-            'start-time': read_string(f'{tmp}/mirror-start'),
-            'end-time': read_string(f'{tmp}/mirror-end'),
+            'start-time': read_string(f'{base}/mirror-start'),
+            'end-time': read_string(f'{base}/mirror-end'),
         }),
     ))

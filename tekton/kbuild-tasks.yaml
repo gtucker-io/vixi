@@ -123,15 +123,10 @@ spec:
     - { name: PYTHONPATH, value: $(workspaces.sandbox.path)/vixi }
     script: |
       #!/usr/bin/env python
-      import os
       import vixi
-
-      UUID, TREE, URL = (os.getenv(key) for key in ('UUID', 'TREE', 'URL'))
-      vixi.sh("git config --global --add safe.directory "
-              f"$(workspaces.sandbox.path)/mirror/{TREE}.git")
-      node = vixi.kbuild.mirror_node('$(workspaces.tmp.path)', UUID, TREE, URL)
+      node = vixi.kbuild.mirror_node('$(workspaces.tmp.path)')
+      vixi.complete()
       print(node.id)
-      vixi.complete(UUID)
 ---
 
 apiVersion: tekton.dev/v1

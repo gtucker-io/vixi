@@ -27,7 +27,7 @@ def rk_client():  # ToDo: use renelick.client.init() in v0.21
     return renelick.client.cli.globs.get_api()
 
 
-def complete(uuid):
-    """Complete the task associated with the provided UUID, if defined"""
-    if uuid:
+def complete(uuid=None):
+    """Complete the task associated with the current UUID if defined"""
+    if uuid := uuid or os.getenv('UUID'):
         rk_client().task.complete(uuid)
