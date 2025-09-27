@@ -8,8 +8,12 @@ import json
 import os
 import re
 
-from renelick.client import NewNode as Node, NewNodeData as Data
-from .base import sh, read_string, iter_files, rk_client, rk_storage
+from renelick.client import (
+    get_api_client as rk_client,
+    NewNode as Node,
+    NewNodeData as Data,
+)
+from .base import sh, read_string, iter_files, rk_storage
 
 
 def mirror_node(base):

@@ -7,8 +7,9 @@
 import os
 import subprocess
 
-import renelick.client.cli
 import renelick
+import renelick.client
+import renelick.client.cli
 
 
 def sh(cmd, cwd=None):
@@ -37,13 +38,7 @@ def iter_files(base):
             iter_files(os.path.join(root, dname))
 
 
-def rk_client():  # ToDo: use renelick.client.init() in v0.21
-    """Get a Renelick client object"""
-    renelick.client.cli.globs.init()
-    return renelick.client.cli.globs.get_api()
-
-
-def rk_storage(name):  # ToDo: ditto in v0.21
+def rk_storage(name):  # ToDo: use renelick.storage.init() in v0.21
     """Get a Renelick storage object"""
     renelick.client.cli.globs.init()
     return renelick.client.cli.globs.get_storage(name)
@@ -52,4 +47,4 @@ def rk_storage(name):  # ToDo: ditto in v0.21
 def complete(uuid=None):
     """Complete the task associated with the current UUID if defined"""
     if uuid := uuid or os.getenv('UUID'):
-        rk_client().task.complete(uuid)
+        renelick.client.get_api_client().task.complete(uuid)
