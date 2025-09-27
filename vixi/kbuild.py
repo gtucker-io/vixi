@@ -23,7 +23,7 @@ def mirror_node(base):
     rk = Client().api
     return rk.node.add(Node(
         name=f'kbuild-mirror-{tree}',
-        kind='vixi-mirror',
+        kind='vixi.mirror',
         task=rk.task.get(uuid) if uuid else None,
         data=Data.from_dict({
             'revision': {
