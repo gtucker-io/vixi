@@ -9,7 +9,7 @@ import os
 import re
 
 from renelick.client import (
-    get_api_client as rk_client,
+    Client,
     NewNode as Node,
     NewNodeData as Data,
 )
@@ -20,7 +20,7 @@ def mirror_node(base):
     """Create a database node for the kbuild mirror task"""
     uuid, tree, url = (os.getenv(key) for key in ('UUID', 'TREE', 'URL'))
     cwd = f'{tree}.git'
-    rk = rk_client()
+    rk = Client().api
     return rk.node.add(Node(
         name=f'kbuild-mirror-{tree}',
         kind='vixi-mirror',
@@ -103,7 +103,7 @@ def save_params(base):
 
 def dump_info(base):
     """Print information about the API user and kbuild parameters"""
-    rk = rk_client()
+    rk = Client().api
     user = rk.user.whoami()
     print("User:")
     print(f"  {'username':12s}  {user.username}")
@@ -126,8 +126,8 @@ def add_result_node(base):
     revision = _gather_revision(opt)
     uuid = opt.get('UUID')
     time_px = os.path.join(base, opt['STEP'])
-    rk = rk_client()
-    return rk_client().node.add(Node(
+    rk = Client().api
+    return rk.node.add(Node(
         name=':'.join(opt[key] for key in ('TREE', 'DESCRIBE', 'STEP')),
         kind='vixi.kbuild',
         parent=opt.get('PARENT') or None,
@@ -151,7 +151,7 @@ def upload_artifacts(base, verbose=True):
     elif not uuid:
         print("WARNING - no task UUID defined, artifacts will not be saved")
     else:
-        rk = rk_client()
+        rk = Client().api
         storage = rk_storage(storage_name)
         parent, step = (os.getenv(key) for key in ('PARENT', 'STEP'))
         dest = f"kbuild-{uuid}"
@@ -182,7 +182,7 @@ def add_docker_node(base):
     if not uuid:
         print("WARNING - no task UUID defined, not building Docker image")
         return None
-    rk = rk_client()
+    rk = Client().api
     return rk.node.add(Node(
         name=':'.join((opt['TREE'], opt['DESCRIBE'], 'docker')),
         kind='vixi.docker',

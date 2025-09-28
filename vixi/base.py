@@ -47,4 +47,4 @@ def rk_storage(name):  # ToDo: use renelick.storage.init() in v0.21
 def complete(uuid=None):
     """Complete the task associated with the current UUID if defined"""
     if uuid := uuid or os.getenv('UUID'):
-        renelick.client.get_api_client().task.complete(uuid)
+        renelick.client.Client().api.task.complete(uuid)
