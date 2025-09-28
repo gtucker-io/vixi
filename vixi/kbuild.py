@@ -15,6 +15,7 @@ from .base import sh, read_string, iter_files, rk_client, rk_storage
 def mirror_node(base):
     """Create a database node for the kbuild mirror task"""
     uuid, tree, url = (os.getenv(key) for key in ('UUID', 'TREE', 'URL'))
+    cwd = f'{tree}.git'
     rk = rk_client()
     return rk.node.add(Node(
         name=f'kbuild-mirror-{tree}',
@@ -22,11 +23,11 @@ def mirror_node(base):
         task=rk.task.get(uuid) if uuid else None,
         data=Data.from_dict({
             'revision': {
-                'sha1': sh('git show --format=%H -s'),
-                'describe': sh('git describe'),
+                'sha1': sh('git show --format=%H -s', cwd=cwd),
+                'describe': sh('git describe', cwd=cwd),
                 'tree': tree,
                 'url': url,
-                'git-head': sh("git log -n1"),
+                'git-head': sh("git log -n1", cwd=cwd),
             },
             'start-time': read_string(f'{base}/mirror-start'),
             'end-time': read_string(f'{base}/mirror-end'),
