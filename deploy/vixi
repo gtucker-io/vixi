@@ -43,7 +43,8 @@ echo "Deploying Tekton resources..."
 kubectl apply -f tekton/garbage.yaml
 kubectl apply -f tekton/kbuild-tasks.yaml
 kubectl apply -f tekton/kbuild-pipeline.yaml
-kubectl apply -f tekton/boot.yaml
+kubectl apply -f tekton/kboot-tasks.yaml
+kubectl apply -f tekton/kboot-pipeline.yaml
 kubectl apply -f tekton/orchestrator.yaml
 kubectl apply -f tekton/scheduler.yaml
 kubectl apply -f tekton/triggers.yaml

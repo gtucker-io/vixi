@@ -21,7 +21,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: boot-sandbox
+  name: kboot-sandbox
   namespace: vixi
   annotations:
     user.custom.annotation/storage.thick-provisioned: "true"

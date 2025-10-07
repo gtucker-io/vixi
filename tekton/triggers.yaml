@@ -217,12 +217,12 @@ spec:
 ---
 
 # -----------------------------------------------------------------------------
-# boot
+# kboot
 
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerTemplate
 metadata:
-  name: boot-trigger-template
+  name: kboot-trigger-template
   namespace: vixi
 spec:
   params:
@@ -234,10 +234,10 @@ spec:
   - apiVersion: tekton.dev/v1beta1
     kind: PipelineRun
     metadata:
-      generateName: boot-
+      generateName: kboot-
     spec:
       pipelineRef:
-        name: boot
+        name: kboot
       serviceAccountName: kubevirt-sa
       podTemplate:
         affinity:
@@ -258,7 +258,7 @@ spec:
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
 metadata:
-  name: boot-trigger-binding
+  name: kboot-trigger-binding
   namespace: vixi
 spec:
   params:
@@ -270,13 +270,13 @@ spec:
 apiVersion: triggers.tekton.dev/v1beta1
 kind: EventListener
 metadata:
-  name: boot-trigger-listener
+  name: kboot-trigger-listener
   namespace: vixi
 spec:
   serviceAccountName: trigger-sa
   triggers:
-  - name: boot-trigger
+  - name: kboot-trigger
     bindings:
-    - ref: boot-trigger-binding
+    - ref: kboot-trigger-binding
     template:
-      ref: boot-trigger-template
+      ref: kboot-trigger-template

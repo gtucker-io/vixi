@@ -20,13 +20,13 @@ spec:
 apiVersion: tekton.dev/v1
 kind: TaskRun
 metadata:
-  generateName: vixi-boot-init-
+  generateName: vixi-kboot-init-
   namespace: vixi
 spec:
   taskRef:
-    name: boot-sandbox-init
+    name: kboot-sandbox-init
   timeout: "0h10m0s"
   workspaces:
   - name: sandbox
     persistentVolumeClaim:
-      claimName: boot-sandbox
+      claimName: kboot-sandbox

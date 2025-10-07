@@ -32,10 +32,6 @@ class VixiOrchestrator(Subscriber):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._oconfig = None
-        self._docker_boot_specs = {
-            'op': 'add',
-            'kind': 'vixi.docker',
-        }
 
     def load_oconfig(self, node=None):
         """Load the orchestrator config from a database node"""
@@ -113,7 +109,7 @@ class VixiOrchestrator(Subscriber):
             scheduler='tekton',  # ToDo: select dynamically
             timeout=datetime.now() + timedelta(minutes=15),
             attributes=TaskAttributes.from_dict({
-                'name': 'boot',
+                'name': 'kboot',
                 'parent': node.id,
                 'kernel-image': data['image'],
             }),

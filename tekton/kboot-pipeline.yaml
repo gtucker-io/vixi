@@ -2,44 +2,10 @@
 #
 # Copyright (C) 2024, 2025 Guillaume Tucker
 
-# Sample Renelick command to trigger a pipeline run:
-#
-# rk task run tekton \
-#     name=boot \
-#     kernel-image=docker.io/gtucker/kernel-image:f18f88ba-3e13-4942-a366-af02d13ff26f \
-#     parent=68c17b99340dd1e4781f2f38
-
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: boot-sandbox-init
-  namespace: vixi
-spec:
-  workspaces:
-  - name: sandbox
-  steps:
-  - name: directory
-    image: alpine:3.22.1
-    workingDir: $(workspaces.sandbox.path)
-    script: |
-      #!/usr/bin/env ash
-      set -eo pipefail
-
-      apk add e2fsprogs  # ToDo: include in Docker image
-
-      [ -f disk.img ] || {
-          truncate -s 10G disk.img
-          mkfs.ext4 disk.img
-      }
-
-      ls -lh
-      fsck.ext4 -p disk.img
----
-
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: boot
+  name: kboot
   namespace: vixi
 spec:
   params:
@@ -160,7 +126,7 @@ spec:
                     #cloud-config
               - name: sandbox
                 persistentVolumeClaim:
-                  claimName: boot-sandbox
+                  claimName: kboot-sandbox
 
   - name: payload
     taskRef:
@@ -206,7 +172,7 @@ spec:
           secretName: api-key
       - name: sandbox
         persistentVolumeClaim:
-          claimName: boot-sandbox
+          claimName: kboot-sandbox
       steps:
       - name: summary
         image: registry.gitlab.com/gtucker.io/renelick:main
@@ -250,8 +216,8 @@ spec:
               su renelick bash -c '\
                   renelick task get "${UUID}" > task.json; \
                   renelick node make \
-                      name="boot" \
-                      kind="vixi.boot" \
+                      name="kboot" \
+                      kind="vixi.kboot" \
                       parent="${PARENT}" \
                       ${TOPT} \
                       data__json=metadata.json \
@@ -265,7 +231,7 @@ spec:
                       export URL=$(su renelick bash -c '\
                           renelick storage upload "${FILE}" \
                           --storage="${STORAGE}" \
-                          --dest="boot-${UUID}" \
+                          --dest="kboot-${UUID}" \
                       ')
                       echo "URL ${URL}"
                       su renelick bash -c '\
