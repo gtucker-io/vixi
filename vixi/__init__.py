@@ -5,4 +5,4 @@
 """VIXI Python Package"""
 
 from .base import sh, complete, read_string, write_string
-from . import kbuild
+from . import kbuild, oconfig
