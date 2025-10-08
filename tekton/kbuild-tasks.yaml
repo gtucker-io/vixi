@@ -10,6 +10,10 @@ metadata:
 spec:
   workspaces:
   - name: sandbox
+  volumes:
+  - name: api-key
+    secret:
+      secretName: api-key
   steps:
   - name: directory
     image: alpine/git:v2.49.1
@@ -17,6 +21,7 @@ spec:
     securityContext:
       runAsNonRoot: true
       runAsUser: 1000
+    # Note: keeping a checkout of vixi.git here is a development trick
     script: |
       #!/usr/bin/env ash
       set -eo pipefail
@@ -26,6 +31,20 @@ spec:
       [ -d vixi ] || git clone https://gitlab.com/gtucker/vixi.git
       (cd vixi; git fetch origin main; git checkout FETCH_HEAD;)
       ls -l
+
+  - name: oconfig
+    image: registry.gitlab.com/gtucker.io/renelick:main
+    imagePullPolicy: Always
+    workingDir: $(workspaces.sandbox.path)/vixi
+    volumeMounts:
+    - name: api-key
+      mountPath: /home/renelick/.config/renelick
+    env:
+    - { name: PYTHONPATH, value: $(workspaces.sandbox.path)/vixi }
+    script: |
+      #!/usr/bin/env python
+      import vixi
+      vixi.oconfig.push('vixi/oconfig.yaml', verbose=True, dump=True)
 ---
 
 apiVersion: tekton.dev/v1
