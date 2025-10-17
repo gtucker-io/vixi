@@ -280,3 +280,107 @@ spec:
     - ref: kboot-trigger-binding
     template:
       ref: kboot-trigger-template
+---
+
+# -----------------------------------------------------------------------------
+# kunit
+
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerTemplate
+metadata:
+  name: kunit-trigger-template
+  namespace: vixi
+spec:
+  params:
+  -  name: uuid
+  -  name: storage
+  -  name: tree
+  -  name: url
+  -  name: revision
+  - {name: clean,      default: 'skip'}
+  - {name: arch,       default: 'x86_64'}
+  - {name: defconfig,  default: 'defconfig'}
+  - {name: opts,       default: ''}
+  - {name: cc,         default: 'gcc'}
+  - {name: ccver,      default: '15.2'}
+  - {name: ccarch,     default: '-x86'}
+  resourcetemplates:
+  - apiVersion: tekton.dev/v1beta1
+    kind: PipelineRun
+    metadata:
+      generateName: kunit-$(tt.params.tree)-$(tt.params.revision)-
+    spec:
+      pipelineRef:
+        name: kunit
+      podTemplate:
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: vixi/worker
+                  operator: In
+                  values: ["true"]
+      timeout: "1h0m0s"
+      workspaces:
+      - name: sandbox
+        persistentVolumeClaim:
+          claimName: kbuild-sandbox
+      - name: artifacts
+        volumeClaimTemplate:
+          spec:
+            accessModes:
+            - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
+      - name: scratch
+        emptyDir: {}
+      params:
+      - {name: uuid,       value: $(tt.params.uuid)}
+      - {name: storage,    value: $(tt.params.storage)}
+      - {name: tree,       value: $(tt.params.tree)}
+      - {name: url,        value: $(tt.params.url)}
+      - {name: revision,   value: $(tt.params.revision)}
+      - {name: clean,      value: $(tt.params.clean)}
+      - {name: arch,       value: $(tt.params.arch)}
+      - {name: defconfig,  value: $(tt.params.defconfig)}
+      - {name: opts,       value: $(tt.params.opts)}
+      - {name: cc,         value: $(tt.params.cc)}
+      - {name: ccver,      value: $(tt.params.ccver)}
+      - {name: ccarch,     value: $(tt.params.ccarch)}
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: TriggerBinding
+metadata:
+  name: kunit-trigger-binding
+  namespace: vixi
+spec:
+  params:
+  - {name: uuid,       value: $(body.uuid)}
+  - {name: storage,    value: $(body.storage)}
+  - {name: tree,       value: $(body.tree)}
+  - {name: url,        value: $(body.url)}
+  - {name: revision,   value: $(body.revision)}
+  - {name: clean,      value: $(body.clean)}
+  - {name: arch,       value: $(body.arch)}
+  - {name: defconfig,  value: $(body.defconfig)}
+  - {name: opts,       value: $(body.opts)}
+  - {name: cc,         value: $(body.cc)}
+  - {name: ccver,      value: $(body.ccver)}
+  - {name: ccarch,     value: $(body.ccarch)}
+---
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: kunit-trigger-listener
+  namespace: vixi
+spec:
+  serviceAccountName: trigger-sa
+  triggers:
+  - name: kunit-trigger
+    bindings:
+    - ref: kunit-trigger-binding
+    template:
+      ref: kunit-trigger-template
+---

@@ -27,6 +27,7 @@ spec:
       set -eo pipefail
 
       mkdir -p kbuild
+      mkdir -p kunit
       mkdir -p mirror
       [ -d vixi ] || git clone https://gitlab.com/gtucker/vixi.git
       (cd vixi; git fetch origin main; git checkout FETCH_HEAD;)

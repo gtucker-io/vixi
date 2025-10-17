@@ -1,0 +1,300 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2025 Guillaume Tucker
+
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: kunit-scripts
+  namespace: vixi
+spec:
+  workspaces:
+  - name: sandbox
+  - name: artifacts
+  steps:
+  # ToDo: consolidate with kbuild as a common set of Git checkout tools
+  - &script-step
+    name: checkout
+    image: alpine:3.22.1
+    workingDir: $(workspaces.artifacts.path)
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+    env: [{ name: STEP, value: checkout }]
+    script: |
+      #!/usr/bin/env ash
+      set -eo pipefail
+
+      . $(workspaces.artifacts.path)/source.env
+      . $(workspaces.artifacts.path)/params.env
+      MIRROR="$(workspaces.sandbox.path)/mirror/${TREE}.git"
+      SCRIPT="${STEP}.sh"
+      mkdir "${STEP}"
+      cd "${STEP}"
+
+      cat >"${SCRIPT}" <<EOF
+      #!/usr/bin/env ash
+      set -eo pipefail
+
+      echo "Tree:     $TREE"
+      echo "URL:      $URL"
+      echo "Revision: $REVISION"
+
+      [ "${CLEAN}" == "true" ] && {
+          echo "Doing a clean build with new checkout for ${TREE}"
+          rm -rf "${TREE}"
+      }
+
+      if [ ! -d "$TREE" ]; then
+          git clone --reference-if-able="$MIRROR" -v "$URL" "$TREE"
+      fi
+
+      cd "$TREE"
+      git remote -v
+      git fetch --tags origin "$REVISION"
+      git checkout FETCH_HEAD
+      git log -n1
+      du -hs .git
+      echo "export DESCRIBE=\"\$(git describe --always)\"" \
+           >> $(workspaces.artifacts.path)/source.env
+      EOF
+
+      cat "${SCRIPT}"
+      chmod 0755 "${SCRIPT}"
+
+  - <<: *script-step
+    name: build
+    env: [{ name: STEP, value: build }]
+    script: |
+      #!/usr/bin/env ash
+      set -eo pipefail
+
+      . $(workspaces.artifacts.path)/source.env
+      . $(workspaces.artifacts.path)/params.env
+      SCRIPT="${STEP}.sh"
+      mkdir "${STEP}"
+      cd "${STEP}"
+
+      cat >"${SCRIPT}" <<EOF
+      #!/usr/bin/env bash
+      set -eo pipefail
+
+      cd "${TREE}"
+      mkdir -p "${BDIR}"
+      tools/testing/kunit/kunit.py build \
+          --build_dir="${BDIR}" \
+          --arch="${ARCH}" \
+          --cross_compile=x86_64-linux-
+      make O="${BDIR}" defconfig
+      make O="${BDIR}" savedefconfig
+      ln -s "\$(pwd)/${BDIR}/defconfig" "${PWD}/defconfig"
+      ln -s "\$(pwd)/${BDIR}/arch/${ARCH}/boot/bzImage" "${PWD}/bzImage"
+      EOF
+
+      cat "${SCRIPT}"
+      chmod 0755 "${SCRIPT}"
+
+  - <<: *script-step
+    name: exec
+    env: [{ name: STEP, value: exec }]
+    script: |
+      #!/usr/bin/env ash
+      set -eo pipefail
+
+      . $(workspaces.artifacts.path)/source.env
+      . $(workspaces.artifacts.path)/params.env
+      SCRIPT="${STEP}.sh"
+      mkdir "${STEP}"
+      cd "${STEP}"
+
+      cat >"${SCRIPT}" <<EOF
+      #!/usr/bin/env bash
+      set -eo pipefail
+
+      cd "${TREE}"
+      tools/testing/kunit/kunit.py exec \
+          --build_dir="${BDIR}" \
+          --arch="${ARCH}" \
+          --cross_compile=x86_64-linux- \
+          --json="${PWD}/kunit.json"
+      EOF
+
+      cat "${SCRIPT}"
+      chmod 0755 "${SCRIPT}"
+---
+
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: kunit
+  namespace: vixi
+spec:
+  params:
+  -   name: uuid
+  -   name: storage
+  -   name: tree
+  -   name: url
+  -   name: revision
+  -   name: arch
+  -   name: defconfig
+  -   name: opts
+  -   name: cc
+  -   name: ccver
+  -   name: ccarch
+  - { name: clean,      default: 'skip'                              }
+  - { name: registry,   default: 'docker.io/gtucker/korg-'           }
+  workspaces:
+  - name: sandbox
+  - name: artifacts
+  - name: scratch
+  tasks:
+
+  # ---------------------------------------------------------------------------
+  # init
+  #
+  - name: init
+    taskRef:
+      name: kbuild-init
+    workspaces:
+    - name: sandbox
+    - name: artifacts
+    params:
+    - { name: kind,       value: kunit                }
+    - { name: uuid,       value: $(params.uuid)       }
+    - { name: storage,    value: $(params.storage)    }
+    - { name: clean,      value: $(params.clean)      }
+    - { name: tree,       value: $(params.tree)       }
+    - { name: url,        value: $(params.url)        }
+    - { name: revision,   value: $(params.revision)   }
+    - { name: arch,       value: $(params.arch)       }
+    - { name: defconfig,  value: $(params.defconfig)  }
+    - { name: opts,       value: $(params.opts)       }
+    - { name: cc,         value: $(params.cc)         }
+    - { name: ccver,      value: $(params.ccver)      }
+    - { name: ccarch,     value: $(params.ccarch)     }
+
+  # ---------------------------------------------------------------------------
+  # build scripts
+  #
+  - name: scripts
+    runAfter:
+    - init
+    taskRef:
+      name: kunit-scripts
+    workspaces:
+    - name: sandbox
+    - name: artifacts
+
+  # ---------------------------------------------------------------------------
+  # checkout
+  #
+  - &step-task
+    name: checkout
+    runAfter:
+    - scripts
+    taskRef:
+      name: step-run
+    workspaces:
+    - name: sandbox
+    - name: artifacts
+    params:
+    - { name: step,        value: checkout                                  }
+    - { name: image,       value: alpine/git:v2.49.1                        }
+  - &result-task
+    name: checkout-result
+    runAfter:
+    - checkout
+    taskRef:
+      name: step-result
+    workspaces:
+    - name: sandbox
+    - name: artifacts
+    params:
+    - { name: kind,        value: kunit                                     }
+    - { name: step,        value: checkout                                  }
+
+  # ---------------------------------------------------------------------------
+  # build
+  #
+  - &step-task
+    name: build
+    runAfter:
+    - checkout
+    taskRef:
+      name: step-run
+    workspaces:
+    - name: sandbox
+    - name: artifacts
+    params:
+    - name: step
+      value: build
+    - name: image
+      value: $(params.registry)$(params.cc):$(params.ccver)-x86$(params.ccarch)-kunit
+  - &result-task
+    name: build-result
+    runAfter:
+    - build
+    - checkout-result
+    taskRef:
+      name: step-result
+    workspaces:
+    - name: sandbox
+    - name: artifacts
+    params:
+    - { name: step,        value: build                                     }
+    - { name: parent,      value: $(tasks.checkout-result.results.node-id)  }
+
+  # ---------------------------------------------------------------------------
+  # exec
+  #
+  - &step-task
+    name: exec
+    runAfter:
+    - build
+    taskRef:
+      name: step-run
+    workspaces:
+    - name: sandbox
+    - name: artifacts
+    params:
+    - name: step
+      value: exec
+    - name: image
+      value: $(params.registry)$(params.cc):$(params.ccver)-x86$(params.ccarch)-kunit
+  - &result-task
+    name: exec-result
+    runAfter:
+    - exec
+    - build-result
+    taskRef:
+      name: step-result
+    workspaces:
+    - name: sandbox
+    - name: artifacts
+    params:
+    - { name: step,        value: exec                                      }
+    - { name: parent,      value: $(tasks.build-result.results.node-id)     }
+
+  # ---------------------------------------------------------------------------
+  # cleanup
+  #
+  finally:
+  - name: cleanup
+    taskSpec:
+      volumes:
+      - name: api-key
+        secret:
+          secretName: api-key
+      steps:
+      # ToDo: add summary node with end time, task status,
+      # flat build script and log artifacts
+      - name: complete-task
+        image: registry.gitlab.com/gtucker.io/renelick:main
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: api-key
+          mountPath: /home/renelick/.config/renelick
+        env:
+        - { name: UUID, value: $(params.uuid) }
+        script: |
+          [ -n "${UUID}" ] && renelick task complete "${UUID}"
