@@ -250,7 +250,7 @@ spec:
       }
 
       if [ ! -d "$TREE" ]; then
-          git clone --reference-if-able="$MIRROR" -v --depth=1 "$URL" "$TREE"
+          git clone --reference-if-able="$MIRROR" -v "$URL" "$TREE"
       fi
 
       cd "$TREE"
@@ -259,7 +259,7 @@ spec:
       git checkout FETCH_HEAD
       git log -n1
       du -hs .git
-      echo "export DESCRIBE=\"\$(git describe)\"" \
+      echo "export DESCRIBE=\"\$(git describe --always)\"" \
            >> $(workspaces.artifacts.path)/source.env
       EOF
 
@@ -417,7 +417,7 @@ spec:
     volumeMounts:
     - name: api-key
       mountPath: /home/renelick/.config/renelick
-    workingDir: $(workspaces.sandbox.path)/kbuild/
+    workingDir: $(workspaces.sandbox.path)/kbuild
     env:
     - { name: PARENT,      value: $(params.parent)                }
     - { name: STEP,        value: $(params.step)                  }
@@ -494,7 +494,7 @@ spec:
     volumeMounts:
     - name: api-key
       mountPath: /home/renelick/.config/renelick
-    workingDir: $(workspaces.sandbox.path)/kbuild/
+    workingDir: $(workspaces.sandbox.path)/kbuild
     env:
     - { name: PARENT,     value: $(params.parent)                }
     - { name: PYTHONPATH, value: $(workspaces.sandbox.path)/vixi }
