@@ -80,7 +80,7 @@ def save_env(base):
     """Save the kbuild environment variables in plain-text files"""
     _dump_env(base, 'storage.env', ['UUID', 'STORAGE'])
     _dump_env(base, 'source.env', ['TREE', 'URL', 'REVISION', 'CLEAN'])
-    arch, cc, ccver = (os.getenv(key) for key in ('ARCH', 'CC', 'CVER'))
+    arch, cc, ccver = (os.getenv(key) for key in ('ARCH', 'CC', 'CCVER'))
     _dump_env(base, 'params.env', [
         'ARCH', 'DEFCONFIG', 'OPTS', 'CC', 'CCVER', 'CCARCH',
     ], {
