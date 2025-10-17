@@ -23,3 +23,6 @@ switchboard:
   - match: {event: trigger, source: git}
     # params: [tree, revision]
     schedule: kbuild
+  - match: {event: trigger, source: git}
+    # params: [tree, revision]
+    schedule: kunit
