@@ -14,14 +14,14 @@ spec:
   -   name: tree
   -   name: url
   -   name: revision
-  - { name: arch,       default: 'x86_64'                            }
-  - { name: defconfig,  default: 'defconfig'                         }
-  - { name: opts,       default: ''                                  }
-  - { name: cc,         default: 'gcc'                               }
-  - { name: ccver,      default: '14.2'                              }
-  - { name: ccarch,     default: '-x86'                              }
-  - { name: registry,   default: 'registry.gitlab.com/gtucker/korg/' }
+  -   name: arch
+  -   name: defconfig
+  -   name: opts
+  -   name: cc
+  -   name: ccver
+  -   name: ccarch
   - { name: clean,      default: 'skip'                              }
+  - { name: registry,   default: 'docker.io/gtucker/korg-'           }
   workspaces:
   - name: sandbox
   - name: artifacts

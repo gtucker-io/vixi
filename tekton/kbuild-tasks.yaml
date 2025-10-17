@@ -161,12 +161,12 @@ spec:
   -   name: tree
   -   name: url
   -   name: revision
-  - { name: arch,       default: 'x86_64'    }
-  - { name: defconfig,  default: 'defconfig' }
-  - { name: opts,       default: ''          }
-  - { name: cc,         default: 'gcc'       }
-  - { name: ccver,      default: '14.2'      }
-  - { name: ccarch,     default: '-x86'      }
+  -   name: arch
+  -   name: defconfig
+  -   name: opts
+  -   name: cc
+  -   name: ccver
+  -   name: ccarch
   results:
   - name: node-id
     description: Id of the database root node

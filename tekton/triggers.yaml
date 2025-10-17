@@ -133,7 +133,7 @@ spec:
   - {name: defconfig,  default: 'defconfig'}
   - {name: opts,       default: ''}
   - {name: cc,         default: 'gcc'}
-  - {name: ccver,      default: '14.2'}
+  - {name: ccver,      default: '15.2'}
   - {name: ccarch,     default: '-x86'}
   resourcetemplates:
   - apiVersion: tekton.dev/v1beta1
