@@ -60,13 +60,13 @@ def _load_opt(base):
         opt = json.load(pfile)
     params = {key.lower(): value for key, value in opt.items()}
     opt.update({key: os.getenv(key) for key in ('PARENT', 'STEP')})
-    opt.update(_load_env(base, 'storage.env'))
+    opt.update(_load_env(base, 'global.env'))
     opt.update(_load_env(base, 'source.env'))
     return opt, params
 
 
 def _gather_revision(opt):
-    cwd = opt['TREE']
+    cwd = os.path.join(opt['KIND'], opt['TREE'])
     return {
         'sha1': sh('git show --format=%H -s', cwd).strip(),
         'describe': opt['DESCRIBE'],
@@ -78,7 +78,7 @@ def _gather_revision(opt):
 
 def save_env(base):
     """Save the kbuild environment variables in plain-text files"""
-    _dump_env(base, 'storage.env', ['UUID', 'STORAGE'])
+    _dump_env(base, 'global.env', ['UUID', 'STORAGE', 'KIND'])
     _dump_env(base, 'source.env', ['TREE', 'URL', 'REVISION', 'CLEAN'])
     arch, cc, ccver = (os.getenv(key) for key in ('ARCH', 'CC', 'CCVER'))
     _dump_env(base, 'params.env', [
@@ -124,12 +124,12 @@ def add_result_node(base):
     """Add a database result node for a kbuild step"""
     opt, params = _load_opt(base)
     revision = _gather_revision(opt)
-    uuid = opt.get('UUID')
+    uuid, kind = (opt.get(key) for key in ('UUID', 'KIND'))
     time_px = os.path.join(base, opt['STEP'])
     rk = Client().api
     return rk.node.add(Node(
         name=':'.join(opt[key] for key in ('TREE', 'DESCRIBE', 'STEP')),
-        kind='vixi.kbuild',
+        kind='.'.join(('vixi', kind)),
         parent=opt.get('PARENT') or None,
         task=rk.task.get(uuid) if uuid else None,
         data=Data.from_dict({
@@ -142,37 +142,40 @@ def add_result_node(base):
     ))
 
 
-def upload_artifacts(base, verbose=True):
+def upload_artifacts(base, parent):
     """Upload kbuild artifacts found in the base directory"""
-    opt = _load_env(base, 'storage.env')
-    storage_name, uuid = (opt.get(key) for key in ('STORAGE', 'UUID'))
+    # ToDo: load default storage from settings instead
+    glob = _load_env(base, 'global.env')
+    storage_name, kind = (glob.get(key) for key in ('STORAGE', 'KIND'))
+    urls = []
     if not storage_name:
         print("WARNING - no storage defined, artifacts will not be saved")
-    elif not uuid:
+    elif not parent.task or not parent.task.id:
         print("WARNING - no task UUID defined, artifacts will not be saved")
     else:
         rk = Client().api
         storage = rk_storage(storage_name)
-        parent, step = (os.getenv(key) for key in ('PARENT', 'STEP'))
-        dest = f"kbuild-{uuid}"
-        task = rk.task.get(uuid)
-        for path in iter_files(os.path.join(base, step)):
-            if verbose:
-                print(f"Uploading {path}")
+        dest = os.path.join(
+            parent.data['revision']['tree'],
+            parent.data['revision']['describe'],
+            kind,
+            str(parent.task.id),
+        )
+        for path in iter_files(os.path.join(base, os.getenv('STEP'))):
             fname = os.path.basename(path)
             url = storage.upload_single((path, fname), dest)
-            if verbose:
-                print(url)
+            urls.append(url)
             rk.node.add(Node(
                 name=fname,
                 kind='artifact-v1',
-                parent=parent,
-                task=task,
+                parent=parent.id,
+                task=parent.task,
                 data=Data.from_dict({
                     'url': url,
                     'storage': storage_name,
                 }),
             ))
+    return urls
 
 
 def add_docker_node(base):
