@@ -68,9 +68,9 @@ def _load_opt(base):
 def _gather_revision(opt):
     cwd = opt['TREE']
     return {
-        'sha1': sh('git show --format=%H -s', cwd),
+        'sha1': sh('git show --format=%H -s', cwd).strip(),
         'describe': opt['DESCRIBE'],
-        'subject': sh('git show --format=%s -s', cwd),
+        'subject': sh('git show --format=%s -s', cwd).strip(),
         'tree': opt['TREE'],
         'url': opt['URL'],
     }
