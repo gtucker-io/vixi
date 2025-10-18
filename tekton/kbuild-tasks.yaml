@@ -131,7 +131,7 @@ spec:
   - name: mirror-node
     image: registry.gitlab.com/gtucker.io/renelick:main
     imagePullPolicy: Always
-    workingDir: $(workspaces.sandbox.path)/mirror/
+    workingDir: $(workspaces.sandbox.path)/mirror
     volumeMounts:
     - name: api-key
       mountPath: /home/renelick/.config/renelick
@@ -155,6 +155,7 @@ metadata:
   namespace: vixi
 spec:
   params:
+  -   name: kind
   - { name: uuid,       default: ''          }
   - { name: storage,    default: ''          }
   - { name: clean,      default: 'skip'      }
@@ -185,6 +186,7 @@ spec:
     - name: api-key
       mountPath: /home/renelick/.config/renelick
     env:
+    - { name: KIND,       value: $(params.kind)                  }
     - { name: UUID,       value: $(params.uuid)                  }
     - { name: STORAGE,    value: $(params.storage)               }
     - { name: CLEAN,      value: $(params.clean)                 }
@@ -358,7 +360,7 @@ spec:
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: kbuild-step
+  name: step-run
   namespace: vixi
 spec:
   params:
@@ -370,7 +372,7 @@ spec:
   steps:
   - name: script
     image: $(params.image)
-    workingDir: $(workspaces.sandbox.path)/kbuild
+    workingDir: $(workspaces.sandbox.path)
     securityContext:
       runAsNonRoot: true
       runAsUser: 1000
@@ -379,18 +381,19 @@ spec:
     # ToDo: replace with Python command for better error handling
     script: |
       set -e
+      . $(workspaces.artifacts.path)/global.env
       SCRIPT=$(workspaces.artifacts.path)/${STEP}/${STEP}.sh
       LOG=$(workspaces.artifacts.path)/${STEP}/${STEP}.txt
       TIME_PX="$(workspaces.artifacts.path)/${STEP}"
       echo -n $(date -Iseconds) > "${TIME_PX}-start-time"
-      "${SCRIPT}" 2>&1 | tee "${LOG}"
+      (cd "${KIND}"; "${SCRIPT}" 2>&1 | tee "${LOG}")
       echo -n $(date -Iseconds) > "${TIME_PX}-end-time"
 ---
 
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: kbuild-result
+  name: step-result
   namespace: vixi
 spec:
   params:
@@ -399,7 +402,6 @@ spec:
   results:
   - name: node-id
     description: Id of the database node with the task's result
-    value: $(steps.node.results.id)
   volumes:
   - name: api-key
     secret:
@@ -408,16 +410,13 @@ spec:
   - name: sandbox
   - name: artifacts
   steps:
-  - &result-step
-    name: node
-    results:
-    - name: id
+  - name: upload
     image: registry.gitlab.com/gtucker.io/renelick:main
     imagePullPolicy: IfNotPresent
     volumeMounts:
     - name: api-key
       mountPath: /home/renelick/.config/renelick
-    workingDir: $(workspaces.sandbox.path)/kbuild
+    workingDir: $(workspaces.sandbox.path)
     env:
     - { name: PARENT,      value: $(params.parent)                }
     - { name: STEP,        value: $(params.step)                  }
@@ -426,21 +425,11 @@ spec:
       #!/usr/bin/env python
       import vixi
       node = vixi.kbuild.add_result_node('$(workspaces.artifacts.path)')
-      vixi.write_string('$(step.results.id.path)', node.id)
-      print(node.id)
-
-  # ToDo: consider merging with 'node' step
-  - <<: *result-step
-    name: artifacts
-    results:
-    env:
-    - { name: PARENT,     value: $(steps.node.results.id)        }
-    - { name: STEP,       value: $(params.step)                  }
-    - { name: PYTHONPATH, value: $(workspaces.sandbox.path)/vixi }
-    script: |
-      #!/usr/bin/env python
-      import vixi
-      vixi.kbuild.upload_artifacts('$(workspaces.artifacts.path)')
+      vixi.write_string('$(results.node-id.path)', node.id)
+      print('  '.join((node.id, node.name)))
+      urls = vixi.kbuild.upload_artifacts('$(workspaces.artifacts.path)', node)
+      for url in urls:
+          print(url)
 ---
 
 apiVersion: tekton.dev/v1
@@ -475,7 +464,7 @@ spec:
       mountPath: /var/run/docker.sock
     workingDir: $(workspaces.scratch.path)
     script: |
-      . $(workspaces.artifacts.path)/storage.env
+      . $(workspaces.artifacts.path)/global.env
       . $(workspaces.artifacts.path)/source.env
       . $(workspaces.artifacts.path)/params.env
       ARTIFACT="${TREE}/${BDIR}/arch/${ARCH}/boot/bzImage"
@@ -494,7 +483,7 @@ spec:
     volumeMounts:
     - name: api-key
       mountPath: /home/renelick/.config/renelick
-    workingDir: $(workspaces.sandbox.path)/kbuild
+    workingDir: $(workspaces.sandbox.path)
     env:
     - { name: PARENT,     value: $(params.parent)                }
     - { name: PYTHONPATH, value: $(workspaces.sandbox.path)/vixi }

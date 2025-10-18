@@ -38,6 +38,7 @@ spec:
     - name: sandbox
     - name: artifacts
     params:
+    - { name: kind,       value: kbuild               }
     - { name: uuid,       value: $(params.uuid)       }
     - { name: storage,    value: $(params.storage)    }
     - { name: clean,      value: $(params.clean)      }
@@ -71,7 +72,7 @@ spec:
     runAfter:
     - scripts
     taskRef:
-      name: kbuild-step
+      name: step-run
     workspaces:
     - name: sandbox
     - name: artifacts
@@ -83,7 +84,7 @@ spec:
     runAfter:
     - checkout
     taskRef:
-      name: kbuild-result
+      name: step-result
     workspaces:
     - name: sandbox
     - name: artifacts
