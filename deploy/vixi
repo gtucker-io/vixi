@@ -50,7 +50,7 @@ kubectl apply -f tekton/triggers.yaml
 echo "Initialising resources..."
 kubectl create -f tekton/init.yaml
 echo "Waiting for tasks to complete..."
-kubectl get taskrun -o name | \
+kubectl get taskrun -o name | grep -e '\(kboot\|kbuild\)-init' | \
     xargs kubectl wait --for=condition=succeeded --timeout=15m \
 || { echo "Failed to run init tasks, aborting"; exit 1; }
 
