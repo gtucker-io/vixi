@@ -50,16 +50,22 @@ class VixiOrchestrator(Subscriber):
         self.load_oconfig()
         super().show_config()
 
-    def _match(self, event, specs):
-        for key, value in specs.items():
+    def _match(self, event, spec):
+        for key, value in spec['match'].items():
             if event.data.get(key) != value:
+                return False
+        for param in spec.get('params', []):
+            if param not in event.data:
+                self.log.error(
+                    f"Missing parameter '{param}' in '{spec['task']}'"
+                )
                 return False
         return True
 
     async def _dispatch_event(self, channel, event):
         self.log.debug(event)
         for spec in self._oconfig['switchboard'][channel]:
-            if self._match(event, spec['match']):
+            if self._match(event, spec):
                 handler = '_'.join(('', 'run', spec['task'].replace('-', '_')))
                 await getattr(self, handler)(event.data, spec['scheduler'])
 
