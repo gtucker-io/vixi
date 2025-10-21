@@ -18,6 +18,9 @@ switchboard:
   - task: kboot-docker
     match: {kind: vixi.docker, op: add}
     scheduler: tekton
+  - task: kunit-parser
+    match: {kind: artifact-v1, op: add, name: kunit.json}
+    scheduler: inline-vixi
   vixi:
   - task: kbuild-mirror
     match: {event: mirror}

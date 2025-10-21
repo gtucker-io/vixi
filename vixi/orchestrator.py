@@ -127,6 +127,28 @@ class VixiOrchestrator(Subscriber):
         tag = f"kunit-{tree}-{revision}"
         self.log.info(f"{tag:48s}  {task.id}")
 
+    async def _run_kunit_parser(self, event, scheduler):
+        node = self._api.node.get(event['id'])
+        parent = self._api.node.get(node.parent)
+        data = parent.data.to_dict()
+        task = self._api.task.schedule(Task(
+            scheduler=scheduler,
+            timeout=datetime.now() + timedelta(minutes=15),
+            attributes=TaskAttributes.from_dict({
+                'name': 'kunit-parser',
+                'artifact': node.id,
+                'parent': parent.id,
+            }),
+        ))
+        tag = '-'.join([
+            'kunit',
+            'parser',
+            data['revision']['tree'],
+            data['revision']['describe'],
+            data['params']['cc'],
+        ])
+        self.log.info(f"{tag:48s}  {task.id}")
+
     async def _run_kboot_docker(self, event, scheduler):
         node = self._api.node.get(event['id'])
         data = node.data.to_dict()
