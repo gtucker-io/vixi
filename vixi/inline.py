@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: LGPL-2.1-or-later
+#
+# Copyright (C) 2025 Guillaume Tucker
+
+"""VIXI inline runtime and scheduler service"""
+
+from renelick.client import Client, Task, SimpleScheduler
+from renelick.client.runtime import Runtime, Config as RuntimeConfig
+import vixi
+
+
+class InlineVIXI(Runtime):
+    """Inline VIXI runtime
+
+    This runtime driver runs tasks directly in the current Python process.
+    It's especially efficient for pure data processing tasks that don't require
+    additional dedicated compute resources.
+    """
+    def run_task(self, task: Task):
+        try:
+            name = task.attributes['name']
+        except KeyError:
+            self.log.error("No name in task attributes")
+        else:
+            func = getattr(self, '_'.join(['', 'run'] + name.split('-')), None)
+            if not func:
+                self.log.warning(f"No method found for task: {name}")
+            else:
+                self.log.info('  '.join([str(task.id), name]))
+                func(task)
+
+    def _run_kunit_parser(self, task: Task):
+        attrs = task.attributes.to_dict()
+        vixi.kunit.parse(self._api, attrs['artifact'], attrs['parent'], task)
+        self._api.task.complete(task.id)
+
+
+if __name__ == '__main__':
+    api = Client().api
+    config = RuntimeConfig(name='inline-vixi', driver='inline-vixi')
+    runtime = InlineVIXI(config, api)
+    SimpleScheduler(runtime, api).loop()
