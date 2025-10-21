@@ -60,20 +60,20 @@ class VixiOrchestrator(Subscriber):
         self.log.debug(event)
         for spec in self._oconfig['switchboard'][channel]:
             if self._match(event, spec['match']):
-                run = '_'.join(('', 'run', spec['schedule'].replace('-', '_')))
-                await getattr(self, run)(event.data)
+                handler = '_'.join(('', 'run', spec['task'].replace('-', '_')))
+                await getattr(self, handler)(event.data, spec['scheduler'])
 
-    async def _run_oconfig_reload(self, event):
+    async def _run_oconfig_reload(self, event, _):
         node = self._api.node.get(event['id'])
         self.load_oconfig(node)
 
-    async def _run_kbuild_mirror(self, event):
+    async def _run_kbuild_mirror(self, event, scheduler):
         tree = event['tree']
         tree_config = self._oconfig['trees'].get(tree)
         if tree_config is None:
             raise RenelickError(f"Unknown tree: {tree}")
         task = self._api.task.schedule(Task(
-            scheduler='tekton',  # ToDo: select dynamically
+            scheduler=scheduler,
             timeout=datetime.now() + timedelta(minutes=30),
             attributes=TaskAttributes.from_dict({
                 'name': 'kbuild-mirror',
@@ -84,13 +84,13 @@ class VixiOrchestrator(Subscriber):
         tag = f"kbuild-mirror-{tree}"
         self.log.info(f"{tag:48s}  {task.id}")
 
-    async def _run_kbuild(self, event):
+    async def _run_kbuild(self, event, scheduler):
         tree, revision = (event[key] for key in ['tree', 'revision'])
         tree_config = self._oconfig['trees'].get(tree)
         if tree_config is None:
             raise RenelickError(f"Unknown tree: {tree}")
         task = self._api.task.schedule(Task(
-            scheduler='tekton',  # ToDo: select dynamically
+            scheduler=scheduler,
             timeout=datetime.now() + timedelta(minutes=90),
             attributes=TaskAttributes.from_dict({
                 'name': 'kbuild',
@@ -102,14 +102,14 @@ class VixiOrchestrator(Subscriber):
         tag = f"kbuild-{tree}-{revision}"
         self.log.info(f"{tag:48s}  {task.id}")
 
-    # ToDo: consolidate with kbuild by passing more options from oconfig.yaml
-    async def _run_kunit(self, event):
+    # ToDo: consolidate with kbuild
+    async def _run_kunit(self, event, scheduler):
         tree, revision = (event[key] for key in ['tree', 'revision'])
         tree_config = self._oconfig['trees'].get(tree)
         if tree_config is None:
             raise RenelickError(f"Unknown tree: {tree}")
         task = self._api.task.schedule(Task(
-            scheduler='tekton',  # ToDo: select dynamically from oconfig.yaml
+            scheduler=scheduler,
             timeout=datetime.now() + timedelta(minutes=90),
             attributes=TaskAttributes.from_dict({
                 'name': 'kunit',
@@ -121,11 +121,11 @@ class VixiOrchestrator(Subscriber):
         tag = f"kunit-{tree}-{revision}"
         self.log.info(f"{tag:48s}  {task.id}")
 
-    async def _run_kboot_docker(self, event):
+    async def _run_kboot_docker(self, event, scheduler):
         node = self._api.node.get(event['id'])
         data = node.data.to_dict()
         task = self._api.task.schedule(Task(
-            scheduler='tekton',  # ToDo: select dynamically
+            scheduler=scheduler,
             timeout=datetime.now() + timedelta(minutes=15),
             attributes=TaskAttributes.from_dict({
                 'name': 'kboot',

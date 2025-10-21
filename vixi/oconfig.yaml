@@ -12,17 +12,22 @@ trees:
 
 switchboard:
   node:
-  - match: {kind: vixi.oconfig, op: add}
-    schedule: oconfig-reload
-  - match: {kind: vixi.docker, op: add}
-    schedule: kboot-docker
+  - task: oconfig-reload
+    match: {kind: vixi.oconfig, op: add}
+    scheduler: tekton
+  - task: kboot-docker
+    match: {kind: vixi.docker, op: add}
+    scheduler: tekton
   vixi:
-  - match: {event: mirror}
-    # params: [tree]
-    schedule: kbuild-mirror
-  - match: {event: trigger, source: git}
-    # params: [tree, revision]
-    schedule: kbuild
-  - match: {event: trigger, source: git}
-    # params: [tree, revision]
-    schedule: kunit
+  - task: kbuild-mirror
+    match: {event: mirror}
+    scheduler: tekton
+    params: [tree]
+  - task: kbuild
+    match: {event: trigger, source: git}
+    scheduler: tekton
+    params: [tree, revision]
+  - task: kunit
+    match: {event: trigger, source: git}
+    scheduler: tekton
+    params: [tree, revision]
