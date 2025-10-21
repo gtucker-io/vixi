@@ -57,6 +57,6 @@ kubectl get taskrun -o name | grep -e '\(kboot\|kbuild\)-init' | \
 
 echo "Deploying services..."
 kubectl apply -f tekton/orchestrator.yaml
-kubectl apply -f tekton/scheduler.yaml
+kubectl apply -f tekton/schedulers.yaml
 
 exit 0
