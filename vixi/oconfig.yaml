@@ -11,26 +11,42 @@ trees:
     url: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
 
 switchboard:
-  node:
-  - task: oconfig-reload
-    match: {kind: vixi.oconfig, op: add}
-    scheduler: tekton
-  - task: kboot-docker
-    match: {kind: vixi.docker, op: add}
-    scheduler: tekton
-  - task: kunit-parser
-    match: {kind: artifact-v1, op: add, name: kunit.json}
-    scheduler: inline-vixi
-  vixi:
-  - task: kbuild-mirror
-    match: {event: mirror}
-    scheduler: tekton
-    params: [tree]
-  - task: kbuild
-    match: {event: trigger, source: git}
-    scheduler: tekton
-    params: [tree, revision]
-  - task: kunit
-    match: {event: trigger, source: git}
-    scheduler: tekton
-    params: [tree, revision]
+
+  # reload the orchestrator config when a new one is available
+- task: oconfig-reload
+  channel: node
+  match: {kind: vixi.oconfig, op: add}
+  scheduler: null
+
+  # boot a kernel in KubeVirt
+- task: kboot-docker
+  channel: node
+  match: {kind: vixi.docker, op: add}
+  scheduler: tekton
+
+  # parse KUnit results
+- task: kunit-parser
+  channel: node
+  match: {kind: artifact-v1, op: add, name: kunit.json}
+  scheduler: inline-vixi
+
+  # update a Git mirror
+- task: kbuild-mirror
+  channel: vixi
+  match: {event: mirror}
+  params: [tree]
+  scheduler: tekton
+
+  # build a kernel in Tekton
+- task: kbuild
+  channel: vixi
+  match: {event: trigger, source: git}
+  params: [tree, revision]
+  scheduler: tekton
+
+  # run KUnit in Tekton
+- task: kunit
+  channel: vixi
+  match: {event: trigger, source: git}
+  params: [tree, revision]
+  scheduler: tekton

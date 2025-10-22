@@ -50,7 +50,9 @@ class VixiOrchestrator(Subscriber):
         self.load_oconfig()
         super().show_config()
 
-    def _match(self, event, spec):
+    def _match(self, channel, event, spec):
+        if spec['channel'] != channel:
+            return False
         for key, value in spec['match'].items():
             if event.data.get(key) != value:
                 return False
@@ -64,8 +66,8 @@ class VixiOrchestrator(Subscriber):
 
     async def _dispatch_event(self, channel, event):
         self.log.debug(event)
-        for spec in self._oconfig['switchboard'][channel]:
-            if self._match(event, spec):
+        for spec in self._oconfig['switchboard']:
+            if self._match(channel, event, spec):
                 handler = '_'.join(('', 'run', spec['task'].replace('-', '_')))
                 await getattr(self, handler)(event.data, spec['scheduler'])
 
