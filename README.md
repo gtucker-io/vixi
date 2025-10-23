@@ -23,13 +23,17 @@ incrementally so as to keep it fast.
   * ☑ upload artifacts to storage via SSH
 * ☑ kboot pipeline
   * ☑ boot a kernel image using KVM
-* ☐ ktest task
-  * run some tests in the VM
-* ☐ kunit task
-  * ☐ checkout the git revision
-  * ☐ run KUnit in a korg container
+* ☐ kselftest task
+  * run some kselftests in the VM
+* ☑ kunit task
+  * ☑ checkout the git revision
+  * ☑ run KUnit in a korg container
 * ☐ static checks
   * ☐ checkpatch
+* ☑ post-processing
+  * ☑ test results delta between revisions
+  * ☐ Git automated bisection
+  * ☐ Scalpel automated bisection
 
 ## Build Coverage
 
@@ -119,7 +123,7 @@ use-context` and deploy all the Kubernetes resources:
 
 ```
 deploy/tekton
-# deploy/kubevirt (skipped for now)
+deploy/kubevirt
 deploy/vixi
 ```
 
