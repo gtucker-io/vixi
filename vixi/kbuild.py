@@ -28,7 +28,6 @@ def mirror_node(base):
         data=Data.from_dict({
             'revision': {
                 'sha1': sh('git show --format=%H -s', cwd=cwd),
-                'describe': sh('git describe', cwd=cwd),
                 'tree': tree,
                 'url': url,
                 'git-head': sh("git log -n1", cwd=cwd),
