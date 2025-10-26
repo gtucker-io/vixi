@@ -79,10 +79,10 @@ class VixiOrchestrator(Subscriber):
         if tree_config is None:
             raise RenelickError(f"Unknown tree: {tree}")
         task = self._api.task.schedule(Task(
+            name='kbuild-mirror',
             scheduler=scheduler,
             timeout=datetime.now() + timedelta(minutes=30),
             attributes=TaskAttributes.from_dict({
-                'name': 'kbuild-mirror',
                 'tree': tree,
                 'url': tree_config['url'],
             }),
@@ -96,10 +96,10 @@ class VixiOrchestrator(Subscriber):
         if tree_config is None:
             raise RenelickError(f"Unknown tree: {tree}")
         task = self._api.task.schedule(Task(
+            name='kbuild',
             scheduler=scheduler,
             timeout=datetime.now() + timedelta(minutes=90),
             attributes=TaskAttributes.from_dict({
-                'name': 'kbuild',
                 'tree': tree,
                 'url': tree_config['url'],
                 'revision': revision,
@@ -115,10 +115,10 @@ class VixiOrchestrator(Subscriber):
         if tree_config is None:
             raise RenelickError(f"Unknown tree: {tree}")
         task = self._api.task.schedule(Task(
+            name='kunit',
             scheduler=scheduler,
             timeout=datetime.now() + timedelta(minutes=90),
             attributes=TaskAttributes.from_dict({
-                'name': 'kunit',
                 'tree': tree,
                 'url': tree_config['url'],
                 'revision': revision,
@@ -132,10 +132,10 @@ class VixiOrchestrator(Subscriber):
         parent = self._api.node.get(node.parent)
         data = parent.data.to_dict()
         task = self._api.task.schedule(Task(
+            name='kunit-parser',
             scheduler=scheduler,
             timeout=datetime.now() + timedelta(minutes=15),
             attributes=TaskAttributes.from_dict({
-                'name': 'kunit-parser',
                 'artifact': node.id,
                 'parent': parent.id,
             }),
@@ -153,10 +153,10 @@ class VixiOrchestrator(Subscriber):
         node = self._api.node.get(event['id'])
         data = node.data.to_dict()
         task = self._api.task.schedule(Task(
+            name='kboot',
             scheduler=scheduler,
             timeout=datetime.now() + timedelta(minutes=15),
             attributes=TaskAttributes.from_dict({
-                'name': 'kboot',
                 'parent': node.id,
                 'kernel-image': data['image'],
             }),
