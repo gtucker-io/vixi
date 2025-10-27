@@ -17,17 +17,12 @@ class InlineVIXI(Runtime):
     additional dedicated compute resources.
     """
     def run_task(self, task: Task):
-        try:
-            name = task.attributes['name']
-        except KeyError:
-            self.log.error("No name in task attributes")
+        func = getattr(self, '_'.join(['', 'run'] + task.name.split('-')), None)
+        if not func:
+            self.log.warning(f"No method found for task: {task.name}")
         else:
-            func = getattr(self, '_'.join(['', 'run'] + name.split('-')), None)
-            if not func:
-                self.log.warning(f"No method found for task: {name}")
-            else:
-                self.log.info('  '.join([str(task.id), name]))
-                func(task)
+            self.log.info('  '.join([str(task.id), task.name]))
+            func(task)
 
     def _run_kunit_parser(self, task: Task):
         attrs = task.attributes.to_dict()
