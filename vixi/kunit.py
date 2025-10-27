@@ -59,4 +59,4 @@ def parse(api, artifact_id, parent_id, task):
         task=task,
     )
     tree = _parse_results(api, data, root)
-    return api.node.add_forest([tree])
+    return api.node.add_batch([tree])
