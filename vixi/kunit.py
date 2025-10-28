@@ -54,11 +54,15 @@ def parse(api, artifact_id, parent_id, task):
     resp.raise_for_status()
     data = resp.json()
     parent = api.node.get(parent_id)
+    parent_data = parent.data.to_dict()
     root = Node(
         name='kunit',
         kind='vixi.group',
         parent=parent.id,
         task=task,
+        data=Data.from_dict({
+            key: parent_data.get(key) for key in ['revision', 'params']
+        })
     )
     tree = _parse_results(api, data, root, ())
     return api.node.add_batch([tree])
