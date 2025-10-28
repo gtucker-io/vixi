@@ -7,7 +7,6 @@
 import requests
 
 from renelick.client import (
-    Client,
     DataNode,
     NewNode as Node,
     NewNodeData as Data,
@@ -22,24 +21,27 @@ RESULT_MAP = {
 }
 
 
-def _parse_results(api, group, root):
+def _parse_results(api, group, root, path):
     branches = []
     for test_case in group.get('test_cases', []):
+        test_name = test_case['name']
         branches.append(Tree(root=Node(
-            name=test_case['name'],
+            name=test_name,
             kind='vixi.test',
             data=Data.from_dict({
+                'path': list(path + (test_name,)),
                 'result': RESULT_MAP[test_case['status']],
             }),
             task=root.task,
         )))
     for sub_group in group.get('sub_groups', []):
+        sub_name = sub_group['name']
         sub_root = Node(
-            name=sub_group['name'],
+            name=sub_name,
             kind='vixi.group',
             task=root.task,
         )
-        tree = _parse_results(api, sub_group, sub_root)
+        tree = _parse_results(api, sub_group, sub_root, path + (sub_name,))
         branches.append(tree)
     return Tree(root=root, branches=branches)
 
@@ -58,5 +60,5 @@ def parse(api, artifact_id, parent_id, task):
         parent=parent.id,
         task=task,
     )
-    tree = _parse_results(api, data, root)
+    tree = _parse_results(api, data, root, ())
     return api.node.add_batch([tree])
