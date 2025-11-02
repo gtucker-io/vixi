@@ -23,7 +23,7 @@ switchboard:
   # boot a kernel in KubeVirt
 - task: kboot-docker
   channel: node
-  match: {kind: vixi.docker, op: add}
+  match: {kind: vixi.kbuild.docker, op: add}
   scheduler: tekton
 
   # parse KUnit results

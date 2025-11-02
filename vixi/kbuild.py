@@ -65,7 +65,7 @@ def _load_opt(base):
 
 
 def _gather_revision(opt):
-    cwd = os.path.join(opt['KIND'], opt['TREE'])
+    cwd = os.path.join(opt['JOB'], opt['TREE'])
     return {
         'sha1': sh('git show --format=%H -s', cwd).strip(),
         'describe': opt['DESCRIBE'],
@@ -77,7 +77,7 @@ def _gather_revision(opt):
 
 def save_env(base):
     """Save the kbuild environment variables in plain-text files"""
-    _dump_env(base, 'global.env', ['UUID', 'STORAGE', 'KIND'])
+    _dump_env(base, 'global.env', ['UUID', 'STORAGE', 'JOB'])
     _dump_env(base, 'source.env', ['TREE', 'URL', 'REVISION', 'CLEAN'])
     arch, cc, ccver = (os.getenv(key) for key in ('ARCH', 'CC', 'CCVER'))
     _dump_env(base, 'params.env', [
@@ -123,12 +123,12 @@ def add_result_node(base):
     """Add a database result node for a kbuild step"""
     opt, params = _load_opt(base)
     revision = _gather_revision(opt)
-    uuid, kind = (opt.get(key) for key in ('UUID', 'KIND'))
+    uuid, job = (opt.get(key) for key in ('UUID', 'JOB'))
     time_px = os.path.join(base, opt['STEP'])
     rk = Client().api
     return rk.node.add(Node(
         name=':'.join(opt[key] for key in ('TREE', 'DESCRIBE', 'STEP')),
-        kind='.'.join(('vixi', kind)),
+        kind='.'.join(('vixi', job, 'step')),
         parent=opt.get('PARENT') or None,
         task=rk.task.get(uuid) if uuid else None,
         data=Data.from_dict({
@@ -145,7 +145,7 @@ def upload_artifacts(base, parent):
     """Upload kbuild artifacts found in the base directory"""
     # ToDo: load default storage from settings instead
     glob = _load_env(base, 'global.env')
-    storage_name, kind = (glob.get(key) for key in ('STORAGE', 'KIND'))
+    storage_name, job = (glob.get(key) for key in ('STORAGE', 'JOB'))
     urls = []
     if not storage_name:
         print("WARNING - no storage defined, artifacts will not be saved")
@@ -157,7 +157,7 @@ def upload_artifacts(base, parent):
         dest = os.path.join(
             parent.data['revision']['tree'],
             parent.data['revision']['describe'],
-            kind,
+            job,
             str(parent.task.id),
         )
         for path in iter_files(os.path.join(base, os.getenv('STEP'))):
@@ -180,14 +180,14 @@ def upload_artifacts(base, parent):
 def add_docker_node(base):
     """Add a database node for a kernel Docker image"""
     opt, params = _load_opt(base)
-    uuid = opt.get('UUID')
+    uuid, job = (opt.get(key) for key in ('UUID', 'JOB'))
     if not uuid:
         print("WARNING - no task UUID defined, not building Docker image")
         return None
     rk = Client().api
     return rk.node.add(Node(
         name=':'.join((opt['TREE'], opt['DESCRIBE'], 'docker')),
-        kind='vixi.docker',
+        kind='.'.join(('vixi', job, 'docker')),
         parent=opt['PARENT'],
         task=rk.task.get(uuid),
         data=Data.from_dict({
