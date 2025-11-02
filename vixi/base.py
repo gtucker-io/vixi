@@ -13,8 +13,23 @@ import renelick.client.cli
 
 
 def sh(cmd, cwd=None):
-    """Run a shell command"""
-    return subprocess.check_output(cmd.split(), cwd=cwd).decode('utf-8')
+    """Run a shell command and return stdout
+
+    The output of the command is returned in a string with any trainling
+    newline stripped.  Raise a CalledProcessError if the command fails.
+    """
+    return subprocess.check_output(
+        cmd.split(), cwd=cwd
+    ).decode('utf-8').strip()
+
+
+def shx(cmd, cwd=None):
+    """Run a shell command and return stdout
+
+    As a simpler version of sh(), run a command and raise a CalledProcessError
+    if it fails.  The output is printed on stdout as-is.
+    """
+    subprocess.check_call(cmd.split(), cwd=cwd)
 
 
 def read_string(path):

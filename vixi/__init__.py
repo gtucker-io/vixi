@@ -4,5 +4,5 @@
 
 """VIXI Python Package"""
 
-from .base import sh, complete, read_string, write_string
+from .base import sh, shx, complete, read_string, write_string
 from . import inline, kbuild, kunit, oconfig
