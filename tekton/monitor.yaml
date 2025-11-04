@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2025 Guillaume Tucker
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monitor
+  namespace: vixi
+spec:
+  replicas: 1
+  revisionHistoryLimit: 0
+  selector:
+    matchLabels:
+      app: monitor
+  template:
+    metadata:
+      labels:
+        app: monitor
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: vixi/app
+                operator: In
+                values: ['true']
+      volumes:
+      - name: api-key
+        secret:
+          secretName: api-key
+      - name: kbuild-sandbox
+        persistentVolumeClaim:
+          claimName: kbuild-sandbox
+      containers:
+      - name: monitor
+        image: registry.gitlab.com/gtucker.io/renelick:main
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: api-key
+          mountPath: /home/renelick/.config/renelick
+        - name: kbuild-sandbox
+          mountPath: /workspace/sandbox
+        env:
+        - name: PYTHONPATH  # development
+          value: /workspace/sandbox/vixi
+        command: ['/usr/bin/env', 'python', '-m', 'vixi.monitor']
