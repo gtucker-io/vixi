@@ -145,6 +145,7 @@ spec:
   -   name: ccarch
   - { name: clean,      default: 'skip'                              }
   - { name: registry,   default: 'docker.io/gtucker/korg-'           }
+  - { name: job,        default: 'kunit'                             }
   workspaces:
   - name: sandbox
   - name: artifacts
@@ -161,7 +162,7 @@ spec:
     - name: sandbox
     - name: artifacts
     params:
-    - { name: kind,       value: kunit                }
+    - { name: job,        value: $(params.job)        }
     - { name: uuid,       value: $(params.uuid)       }
     - { name: storage,    value: $(params.storage)    }
     - { name: clean,      value: $(params.clean)      }
@@ -212,7 +213,6 @@ spec:
     - name: sandbox
     - name: artifacts
     params:
-    - { name: kind,        value: kunit                                     }
     - { name: step,        value: checkout                                  }
 
   # ---------------------------------------------------------------------------

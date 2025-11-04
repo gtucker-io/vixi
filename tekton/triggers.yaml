@@ -135,6 +135,7 @@ spec:
   - {name: cc,         default: 'gcc'}
   - {name: ccver,      default: '15.2'}
   - {name: ccarch,     default: '-x86'}
+  - {name: job,        default: 'kbuild'}
   resourcetemplates:
   - apiVersion: tekton.dev/v1beta1
     kind: PipelineRun
@@ -180,6 +181,7 @@ spec:
       - {name: cc,         value: $(tt.params.cc)}
       - {name: ccver,      value: $(tt.params.ccver)}
       - {name: ccarch,     value: $(tt.params.ccarch)}
+      - {name: job,        value: $(tt.params.job)}
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
@@ -200,6 +202,7 @@ spec:
   - {name: cc,         value: $(body.cc)}
   - {name: ccver,      value: $(body.ccver)}
   - {name: ccarch,     value: $(body.ccarch)}
+  - {name: job,        value: $(body.job)}
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: EventListener
@@ -304,6 +307,7 @@ spec:
   - {name: cc,         default: 'gcc'}
   - {name: ccver,      default: '15.2'}
   - {name: ccarch,     default: '-x86'}
+  - {name: job,        default: 'kunit'}
   resourcetemplates:
   - apiVersion: tekton.dev/v1beta1
     kind: PipelineRun
@@ -349,6 +353,7 @@ spec:
       - {name: cc,         value: $(tt.params.cc)}
       - {name: ccver,      value: $(tt.params.ccver)}
       - {name: ccarch,     value: $(tt.params.ccarch)}
+      - {name: job,        value: $(tt.params.job)}
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
@@ -369,6 +374,7 @@ spec:
   - {name: cc,         value: $(body.cc)}
   - {name: ccver,      value: $(body.ccver)}
   - {name: ccarch,     value: $(body.ccarch)}
+  - {name: job,        value: $(body.job)}
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: EventListener

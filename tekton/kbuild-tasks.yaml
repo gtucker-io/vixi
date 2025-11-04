@@ -155,7 +155,7 @@ metadata:
   namespace: vixi
 spec:
   params:
-  -   name: kind
+  -   name: job
   - { name: uuid,       default: ''          }
   - { name: storage,    default: ''          }
   - { name: clean,      default: 'skip'      }
@@ -186,7 +186,7 @@ spec:
     - name: api-key
       mountPath: /home/renelick/.config/renelick
     env:
-    - { name: KIND,       value: $(params.kind)                  }
+    - { name: JOB,        value: $(params.job)                   }
     - { name: UUID,       value: $(params.uuid)                  }
     - { name: STORAGE,    value: $(params.storage)               }
     - { name: CLEAN,      value: $(params.clean)                 }
@@ -388,7 +388,7 @@ spec:
       LOG=$(workspaces.artifacts.path)/${STEP}/${STEP}.txt
       TIME_PX="$(workspaces.artifacts.path)/${STEP}"
       echo -n $(date -Iseconds) > "${TIME_PX}-start-time"
-      (cd "${KIND}"; "${SCRIPT}" 2>&1 | tee "${LOG}")
+      (cd "${JOB}"; "${SCRIPT}" 2>&1 | tee "${LOG}")
       echo -n $(date -Iseconds) > "${TIME_PX}-end-time"
 ---
 
