@@ -28,8 +28,8 @@ switchboard:
 
   # parse KUnit results
 - task: kunit-parser
-  channel: node
-  match: {kind: artifact-v1, op: add, name: kunit.json}
+  channel: task
+  match: {name: kunit, op: complete}
   scheduler: inline-vixi
 
   # update a Git mirror
