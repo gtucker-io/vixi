@@ -129,6 +129,7 @@ spec:
   -  name: url
   -  name: revision
   - {name: clean,      default: 'skip'}
+  - {name: filter,     default: ''}
   - {name: arch,       default: 'x86_64'}
   - {name: defconfig,  default: 'defconfig'}
   - {name: opts,       default: ''}
@@ -175,6 +176,7 @@ spec:
       - {name: url,        value: $(tt.params.url)}
       - {name: revision,   value: $(tt.params.revision)}
       - {name: clean,      value: $(tt.params.clean)}
+      - {name: filter,     value: $(tt.params.filter)}
       - {name: arch,       value: $(tt.params.arch)}
       - {name: defconfig,  value: $(tt.params.defconfig)}
       - {name: opts,       value: $(tt.params.opts)}
@@ -196,6 +198,7 @@ spec:
   - {name: url,        value: $(body.url)}
   - {name: revision,   value: $(body.revision)}
   - {name: clean,      value: $(body.clean)}
+  - {name: filter,     value: $(body.filter)}
   - {name: arch,       value: $(body.arch)}
   - {name: defconfig,  value: $(body.defconfig)}
   - {name: opts,       value: $(body.opts)}
@@ -301,6 +304,7 @@ spec:
   -  name: url
   -  name: revision
   - {name: clean,      default: 'skip'}
+  - {name: filter,     default: ''}
   - {name: arch,       default: 'x86_64'}
   - {name: defconfig,  default: 'defconfig'}
   - {name: opts,       default: ''}
@@ -347,6 +351,7 @@ spec:
       - {name: url,        value: $(tt.params.url)}
       - {name: revision,   value: $(tt.params.revision)}
       - {name: clean,      value: $(tt.params.clean)}
+      - {name: filter,     value: $(tt.params.filter)}
       - {name: arch,       value: $(tt.params.arch)}
       - {name: defconfig,  value: $(tt.params.defconfig)}
       - {name: opts,       value: $(tt.params.opts)}
@@ -368,6 +373,7 @@ spec:
   - {name: url,        value: $(body.url)}
   - {name: revision,   value: $(body.revision)}
   - {name: clean,      value: $(body.clean)}
+  - {name: filter,     value: $(body.filter)}
   - {name: arch,       value: $(body.arch)}
   - {name: defconfig,  value: $(body.defconfig)}
   - {name: opts,       value: $(body.opts)}

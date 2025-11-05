@@ -79,7 +79,7 @@ def _gather_revision(opt):
 
 def save_env(base):
     """Save the kbuild environment variables in plain-text files"""
-    _dump_env(base, 'global.env', ['UUID', 'STORAGE', 'JOB'])
+    _dump_env(base, 'global.env', ['UUID', 'STORAGE', 'JOB', 'FILTER'])
     _dump_env(base, 'source.env', ['TREE', 'URL', 'REVISION', 'CLEAN'])
     arch, cc, ccver = (os.getenv(key) for key in ('ARCH', 'CC', 'CCVER'))
     _dump_env(base, 'params.env', [

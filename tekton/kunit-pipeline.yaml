@@ -105,6 +105,7 @@ spec:
 
       . $(workspaces.artifacts.path)/source.env
       . $(workspaces.artifacts.path)/params.env
+      . $(workspaces.artifacts.path)/global.env
       SCRIPT="${STEP}.sh"
       mkdir "${STEP}"
       cd "${STEP}"
@@ -118,7 +119,8 @@ spec:
           --build_dir="${BDIR}" \
           --arch="${ARCH}" \
           --cross_compile=x86_64-linux- \
-          --json="${PWD}/kunit.json"
+          --json="${PWD}/kunit.json" \
+          ${FILTER}
       EOF
 
       cat "${SCRIPT}"
@@ -144,6 +146,7 @@ spec:
   -   name: ccver
   -   name: ccarch
   - { name: clean,      default: 'skip'                              }
+  - { name: filter,     default: ''                                  }
   - { name: registry,   default: 'docker.io/gtucker/korg-'           }
   - { name: job,        default: 'kunit'                             }
   workspaces:
@@ -166,6 +169,7 @@ spec:
     - { name: uuid,       value: $(params.uuid)       }
     - { name: storage,    value: $(params.storage)    }
     - { name: clean,      value: $(params.clean)      }
+    - { name: filter,     value: $(params.filter)     }
     - { name: tree,       value: $(params.tree)       }
     - { name: url,        value: $(params.url)        }
     - { name: revision,   value: $(params.revision)   }

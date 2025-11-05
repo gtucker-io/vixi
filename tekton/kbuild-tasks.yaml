@@ -158,6 +158,7 @@ spec:
   - { name: uuid,       default: ''          }
   - { name: storage,    default: ''          }
   - { name: clean,      default: 'skip'      }
+  - { name: filter,     default: ''          }
   -   name: tree
   -   name: url
   -   name: revision
@@ -189,6 +190,7 @@ spec:
     - { name: UUID,       value: $(params.uuid)                  }
     - { name: STORAGE,    value: $(params.storage)               }
     - { name: CLEAN,      value: $(params.clean)                 }
+    - { name: FILTER,     value: $(params.filter)                }
     - { name: TREE,       value: $(params.tree)                  }
     - { name: URL,        value: $(params.url)                   }
     - { name: REVISION,   value: $(params.revision)              }
