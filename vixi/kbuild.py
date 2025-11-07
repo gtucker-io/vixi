@@ -13,7 +13,9 @@ from renelick.client import (
     NewNode as Node,
     NewNodeData as Data,
 )
-from .base import sh, read_string, iter_files, rk_storage
+from .base import sh, shx, read_string, iter_files, rk_storage
+
+TORVALDS = 'https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git'
 
 
 def mirror_node(base):
@@ -117,6 +119,33 @@ def dump_info(base):
         params = json.load(pfile)
         for key, value in params.items():
             print(f"  {key.lower():12s}  {value}")
+
+
+def checkout(sandbox, path, revision, clean=False, gitonly=False):
+    """Initialise or update a kernel checkout"""
+    tree, url, sha1 = (revision[key] for key in ('tree', 'url', 'sha1'))
+    print(f"Tree:     {tree}")
+    print(f"URL:      {url}")
+    print(f"Revision: {sha1}")
+    cwd = os.path.join(sandbox, path, tree)
+    print(f"Checkout directory: {cwd}")
+    if clean is True:
+        print("Deleting any existing checkout")
+        shx(f'rm -rf {cwd}')
+    if not os.path.exists(cwd):
+        shx(f'mkdir -p {cwd}')
+        mirror = os.path.join(sandbox, 'mirror', f'{tree}.git')
+        print(f"New checkout, mirror: {mirror}")
+        opts = '--no-checkout' if gitonly else ''
+        shx(f'git clone -v --reference-if-able={mirror} {opts} {url} {cwd}')
+    shx('git remote -v', cwd)
+    shx(f'git fetch --tags origin {sha1}', cwd)
+    if not gitonly:
+        shx('git checkout FETCH_HEAD', cwd)
+        shx(f'git fetch --tags {TORVALDS}', cwd)
+        print(sh('git log -n1', cwd))
+    shx(f'du -hs {cwd}')
+    return cwd
 
 
 def add_result_node(base):
