@@ -166,6 +166,25 @@ class VixiOrchestrator(Subscriber):
         ])
         self.log.info(f"{tag:48s}  {task.id}")
 
+    async def _run_delta(self, event, scheduler):
+        parent = self._api.node.get(event['id'])
+        task = self._api.task.schedule(Task(
+            name='delta',
+            scheduler=scheduler,
+            timeout=datetime.now() + timedelta(minutes=30),
+            attributes=TaskAttributes.from_dict({
+                'parent': parent.id,
+            }),
+        ))
+        tag = '-'.join([
+            parent.name,
+            'delta',
+            data['revision']['tree'],
+            data['revision']['describe'],
+            data['params']['cc'],
+        ])
+        self.log.info(f"{tag:48s}  {task.id}")
+
     async def _run_kboot_docker(self, event, scheduler):
         node = self._api.node.get(event['id'])
         data = node.data.to_dict()

@@ -32,6 +32,12 @@ switchboard:
   match: {name: kunit, op: complete}
   scheduler: inline-vixi
 
+  # compute delta between test results
+- task: delta
+  channel: node
+  match: {kind: vixi.group, op: populate}
+  scheduler: inline-vixi
+
   # update a Git mirror
 - task: kbuild-mirror
   channel: vixi

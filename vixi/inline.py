@@ -6,6 +6,7 @@
 
 from renelick.client import Client, Task, SimpleScheduler
 from renelick.client.runtime import Runtime, Config as RuntimeConfig
+import vixi.delta
 import vixi.kunit
 
 
@@ -16,6 +17,9 @@ class InlineVIXI(Runtime):
     It's especially efficient for pure data processing tasks that don't require
     additional dedicated compute resources.
     """
+
+    WORKSPACE = '/workspace/sandbox'
+
     def run_task(self, task: Task):
         func = getattr(self, '_'.join(['', 'run'] + task.name.split('-')), None)
         if not func:
@@ -27,6 +31,11 @@ class InlineVIXI(Runtime):
     def _run_kunit_parser(self, task: Task):
         attrs = task.attributes.to_dict()
         vixi.kunit.parse(self._api, attrs['artifact'], task)
+        self._api.task.complete(task.id)
+
+    def _run_delta(self, task: Task):
+        attrs = task.attributes.to_dict()
+        vixi.delta.Delta(self._api, attrs['parent'], task).run(self.WORKSPACE)
         self._api.task.complete(task.id)
 
 
