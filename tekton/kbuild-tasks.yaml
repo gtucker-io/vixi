@@ -26,9 +26,8 @@ spec:
       #!/usr/bin/env ash
       set -eo pipefail
 
-      mkdir -p kbuild
-      mkdir -p kunit
       mkdir -p mirror
+      mkdir -p src
       [ -d vixi ] || git clone https://gitlab.com/gtucker/vixi.git
       (cd vixi; git fetch origin main; git checkout FETCH_HEAD;)
       ls -l
@@ -374,7 +373,7 @@ spec:
   steps:
   - name: script
     image: $(params.image)
-    workingDir: $(workspaces.sandbox.path)
+    workingDir: $(workspaces.sandbox.path)/src
     securityContext:
       runAsNonRoot: true
       runAsUser: 1000
@@ -418,7 +417,7 @@ spec:
     volumeMounts:
     - name: api-key
       mountPath: /home/renelick/.config/renelick
-    workingDir: $(workspaces.sandbox.path)
+    workingDir: $(workspaces.sandbox.path)/src
     env:
     - { name: PARENT,      value: $(params.parent)                }
     - { name: STEP,        value: $(params.step)                  }
@@ -470,7 +469,7 @@ spec:
       . $(workspaces.artifacts.path)/source.env
       . $(workspaces.artifacts.path)/params.env
       ARTIFACT="${TREE}/${BDIR}/arch/${ARCH}/boot/bzImage"
-      cp "$(workspaces.sandbox.path)/kbuild/${ARTIFACT}" .
+      cp "$(workspaces.sandbox.path)/src/kbuild/${ARTIFACT}" .
       echo "FROM scratch" > Dockerfile
       echo "ADD --chown=107:107 bzImage boot/bzImage" >> Dockerfile
       tag="docker.io/gtucker/kernel-image:${UUID}"
@@ -485,7 +484,7 @@ spec:
     volumeMounts:
     - name: api-key
       mountPath: /home/renelick/.config/renelick
-    workingDir: $(workspaces.sandbox.path)
+    workingDir: $(workspaces.sandbox.path)/src
     env:
     - { name: PARENT,     value: $(params.parent)                }
     - { name: PYTHONPATH, value: $(workspaces.sandbox.path)/vixi }
