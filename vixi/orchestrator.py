@@ -67,8 +67,11 @@ class VixiOrchestrator(Subscriber):
     async def _dispatch_event(self, channel, event):
         self.log.debug(event)
         for evdata in event.data.get('batch', [event.data]):
+            self.log.debug(evdata)
             for spec in self._oconfig['switchboard']:
+                self.log.debug(spec)
                 if self._match(channel, evdata, spec):
+                    self.log.debug("MATCH %s", spec['task'])
                     handler = '_'.join((
                         '', 'run', spec['task'].replace('-', '_')
                     ))
