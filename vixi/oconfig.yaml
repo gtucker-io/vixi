@@ -58,3 +58,10 @@ switchboard:
   channel: node
   match: {kind: vixi.group, op: populate}
   scheduler: inline-vixi
+
+  # run a Git bisection based on found delta
+- task: bisect
+  channel: node
+  match: {kind: vixi.delta, op: populate}
+  # attributes: {data.category: break}
+  scheduler: inline-vixi

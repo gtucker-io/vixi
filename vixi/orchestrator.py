@@ -189,6 +189,28 @@ class VixiOrchestrator(Subscriber):
         ])
         self.log.info(f"{tag:48s}  {task.id}")
 
+    async def _run_bisect(self, event, scheduler):
+        delta = self._api.node.get(event['id'])
+        data = delta.data.to_dict()
+        task = self._api.task.schedule(Task(
+            name='bisect',
+            scheduler=scheduler,
+            timeout=datetime.now() + timedelta(minutes=180),
+            attributes=TaskAttributes.from_dict({
+                'delta': delta.id,
+            }),
+        ))
+        revision = data['new']['revision']
+        params = data['new']['params']
+        tag = '-'.join([
+            data['root'],
+            'bisect',
+            revision['tree'],
+            revision['describe'],
+            params['cc'],
+        ])
+        self.log.info(f"{tag:48s}  {task.id}")
+
     async def _run_kboot_docker(self, event, scheduler):
         node = self._api.node.get(event['id'])
         data = node.data.to_dict()

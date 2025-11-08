@@ -4,8 +4,11 @@
 
 """VIXI inline runtime and scheduler service"""
 
+import tempfile
+
 from renelick.client import Client, Task, SimpleScheduler
 from renelick.client.runtime import Runtime, Config as RuntimeConfig
+import vixi.bisect
 import vixi.delta
 import vixi.kunit
 
@@ -19,6 +22,10 @@ class InlineVIXI(Runtime):
     """
 
     WORKSPACE = '/workspace/sandbox'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._storage = Client().storage
 
     def run_task(self, task: Task):
         func = getattr(self, '_'.join(['', 'run'] + task.name.split('-')), None)
@@ -36,6 +43,17 @@ class InlineVIXI(Runtime):
     def _run_delta(self, task: Task):
         attrs = task.attributes.to_dict()
         vixi.delta.Delta(self._api, attrs['parent'], task).run(self.WORKSPACE)
+        self._api.task.complete(task.id)
+
+    def _run_bisect(self, task: Task):
+        attrs = task.attributes.to_dict()
+        with tempfile.TemporaryDirectory() as artifacts:
+            vixi.bisect.Bisection(
+                self._api, self._storage, attrs['delta'], task
+            ).run(
+                self.WORKSPACE,
+                artifacts,
+            )
         self._api.task.complete(task.id)
 
 
