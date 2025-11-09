@@ -6,7 +6,7 @@
 
 set -eo pipefail
 
-which minikube > /dev/null || {
+which minikube > /dev/null 2>&1 || {
     which dpkg || {
         echo "MiniKube not found, please install it:"
         echo https://minikube.sigs.k8s.io/docs/start/
