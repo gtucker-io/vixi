@@ -171,6 +171,8 @@ class VixiOrchestrator(Subscriber):
 
     async def _run_delta(self, event, scheduler):
         parent = self._api.node.get(event['id'])
+        if parent.task.attributes.to_dict().get('job') != 'kunit':
+            return
         data = parent.data.to_dict()
         task = self._api.task.schedule(Task(
             name='delta',
