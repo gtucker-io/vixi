@@ -46,14 +46,14 @@ def _parse_results(api, group, root, path):
     return Tree(root=root, branches=branches)
 
 
-def parse(api, artifact_id, parent_id, task):
+def parse(api, artifact_id, task):
     artifact = api.node.get(artifact_id)
     # ToDo: Storage.download(artifact) with timeout from settings etc.
     artifact_data = DataNode(artifact).get_obj(api)
     resp = requests.get(artifact_data.url, timeout=25)
     resp.raise_for_status()
     data = resp.json()
-    parent = api.node.get(parent_id)
+    parent = api.node.get(artifact.parent)
     parent_data = parent.data.to_dict()
     root = Node(
         name='kunit',

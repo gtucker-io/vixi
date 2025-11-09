@@ -26,7 +26,7 @@ class InlineVIXI(Runtime):
 
     def _run_kunit_parser(self, task: Task):
         attrs = task.attributes.to_dict()
-        vixi.kunit.parse(self._api, attrs['artifact'], attrs['parent'], task)
+        vixi.kunit.parse(self._api, attrs['artifact'], task)
         self._api.task.complete(task.id)
 
 
