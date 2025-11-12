@@ -44,7 +44,7 @@ spec:
     - { name: PYTHONPATH, value: $(workspaces.sandbox.path)/vixi }
     script: |
       #!/usr/bin/env python
-      import vixi
+      import vixi.oconfig
       vixi.oconfig.push('vixi/oconfig.yaml', verbose=True, dump=True)
 ---
 
@@ -142,7 +142,7 @@ spec:
     - { name: PYTHONPATH, value: $(workspaces.sandbox.path)/vixi }
     script: |
       #!/usr/bin/env python
-      import vixi
+      import vixi.kbuild
       node = vixi.kbuild.mirror_node('$(workspaces.tmp.path)')
       vixi.complete()
       print(node.id)
@@ -202,7 +202,7 @@ spec:
     - { name: PYTHONPATH, value: $(workspaces.sandbox.path)/vixi }
     script: |
       #!/usr/bin/env python
-      import vixi
+      import vixi.kbuild
       artifacts = '$(workspaces.artifacts.path)'
       vixi.kbuild.save_env(artifacts)
       vixi.kbuild.save_params(artifacts)
@@ -425,7 +425,7 @@ spec:
     - { name: PYTHONPATH,  value: $(workspaces.sandbox.path)/vixi }
     script: |
       #!/usr/bin/env python
-      import vixi
+      import vixi.kbuild
       node = vixi.kbuild.add_result_node('$(workspaces.artifacts.path)')
       vixi.write_string('$(results.node-id.path)', node.id)
       print('  '.join((node.id, node.name)))
@@ -491,7 +491,7 @@ spec:
     - { name: PYTHONPATH, value: $(workspaces.sandbox.path)/vixi }
     script: |
       #!/usr/bin/env python
-      import vixi
+      import vixi.kbuild
       node = vixi.kbuild.add_docker_node('$(workspaces.artifacts.path)')
       if node:
         vixi.write_string('$(step.results.id.path)', node.id)

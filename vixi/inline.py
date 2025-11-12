@@ -6,7 +6,7 @@
 
 from renelick.client import Client, Task, SimpleScheduler
 from renelick.client.runtime import Runtime, Config as RuntimeConfig
-import vixi
+import vixi.kunit
 
 
 class InlineVIXI(Runtime):
