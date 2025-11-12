@@ -66,3 +66,11 @@ def parse(api, artifact_id, task):
     )
     tree = _parse_results(api, data, root, ())
     return api.node.add_batch([tree])
+
+
+if __name__ == '__main__':
+    import sys
+    from renelick.client import Client
+    aid = sys.argv[1] if len(sys.argv) > 1 else '6910894b32cb46920f0e6e87'
+    res = parse(Client().api, aid, None)
+    print(f"Added {len(res)} nodes")
