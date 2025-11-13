@@ -124,6 +124,7 @@ class VixiOrchestrator(Subscriber):
                 'tree': tree,
                 'url': tree_config['url'],
                 'revision': revision,
+                'job': 'kunit',
             }),
         ))
         tag = f"kunit-{tree}-{revision}"
@@ -140,19 +141,19 @@ class VixiOrchestrator(Subscriber):
             return
         artifact = found[0]
         # ToDo: add syntax to match with attributes in oconfig.yaml directly
-        if artifact.task.attributes.to_dict().get('kind') != 'kunit':
+        if artifact.task.attributes.to_dict().get('job') != 'kunit':
             return
-        parent = self._api.node.get(artifact.parent)
-        data = parent.data.to_dict()
         task = self._api.task.schedule(Task(
             name='kunit-parser',
             scheduler=scheduler,
             timeout=datetime.now() + timedelta(minutes=15),
             attributes=TaskAttributes.from_dict({
                 'artifact': artifact.id,
-                'parent': parent.id,
+                'job': 'kunit',
             }),
         ))
+        parent = self._api.node.get(artifact.parent)
+        data = parent.data.to_dict()
         tag = '-'.join([
             'kunit',
             'parser',
