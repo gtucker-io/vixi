@@ -20,24 +20,6 @@ switchboard:
   match: {kind: vixi.oconfig, op: add}
   scheduler: null
 
-  # boot a kernel in KubeVirt
-- task: kboot-docker
-  channel: node
-  match: {kind: vixi.kbuild.docker, op: add}
-  scheduler: tekton
-
-  # parse KUnit results
-- task: kunit-parser
-  channel: task
-  match: {name: kunit, op: complete}
-  scheduler: inline-vixi
-
-  # compute delta between test results
-- task: delta
-  channel: node
-  match: {kind: vixi.group, op: populate}
-  scheduler: inline-vixi
-
   # update a Git mirror
 - task: kbuild-mirror
   channel: vixi
@@ -52,9 +34,27 @@ switchboard:
   params: [tree, revision]
   scheduler: tekton
 
+  # boot a kernel in KubeVirt
+- task: kboot-docker
+  channel: node
+  match: {kind: vixi.kbuild.docker, op: add}
+  scheduler: tekton
+
   # run KUnit in Tekton
 - task: kunit
   channel: vixi
   match: {event: trigger, source: git}
   params: [tree, revision]
   scheduler: tekton
+
+  # parse KUnit results
+- task: kunit-parser
+  channel: task
+  match: {name: kunit, op: complete}
+  scheduler: inline-vixi
+
+  # compute delta between test results
+- task: delta
+  channel: node
+  match: {kind: vixi.group, op: populate}
+  scheduler: inline-vixi
