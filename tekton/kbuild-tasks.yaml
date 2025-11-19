@@ -387,7 +387,7 @@ spec:
       LOG=$(workspaces.artifacts.path)/${STEP}/${STEP}.txt
       TIME_PX="$(workspaces.artifacts.path)/${STEP}"
       echo -n $(date -Iseconds) > "${TIME_PX}-start-time"
-      (cd "${JOB}"; "${SCRIPT}" 2>&1 | tee "${LOG}")
+      (mkdir -p "${JOB}"; cd "${JOB}"; "${SCRIPT}" 2>&1 | tee "${LOG}")
       echo -n $(date -Iseconds) > "${TIME_PX}-end-time"
 ---
 
