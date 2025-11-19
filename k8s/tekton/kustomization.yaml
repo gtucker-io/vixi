@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2025 Guillaume Tucker
+
+resources:
+- feature-flags.yaml
+
+configMapGenerator:
+- name: feature-flags
+  namespace: tekton-pipelines
+  behavior: merge
+  literals:
+  - coschedule=pipelineruns

@@ -18,6 +18,12 @@ echo "Deploying triggers..."
 kubectl apply -f "$URL"triggers/previous/v0.32.0/release.yaml
 kubectl apply -f "$URL"triggers/previous/v0.32.0/interceptors.yaml
 
+echo "Patching feature flags..."
+kubectl -n tekton-pipelines get configmap feature-flags -o yaml \
+    > k8s/tekton/feature-flags.yaml
+kubectl apply -k k8s/tekton
+rm k8s/tekton/feature-flags.yaml
+
 echo "Waiting for deployments..."
 kubectl wait -n tekton-pipelines deployment \
     tekton-pipelines-webhook --for condition=Available --timeout 10m
