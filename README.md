@@ -111,6 +111,9 @@ where to deploy it:
 deploy/gke exp-001-430112 vixi-001 europe-west1-c
 ```
 
+You'll then need to install the standard `kubectl` tool as per the [Kubernetes
+documentation](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-native-package-management).
+
 Then make sure your cluster is the one currently selected with `kubectl
 use-context` and deploy all the Kubernetes resources:
 
