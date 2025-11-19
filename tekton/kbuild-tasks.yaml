@@ -32,6 +32,37 @@ spec:
       (cd vixi; git fetch origin main; git checkout FETCH_HEAD;)
       ls -l
 
+  - name: linux-mirror
+    image: alpine/curl:8.14.1
+    workingDir: $(workspaces.sandbox.path)/mirror
+    script: |
+      #!/usr/bin/env ash
+      set -eo pipefail
+
+      pwd
+      ls -l
+
+      if [ -d linux.git ]; then
+          echo "linux.git mirror directory already present, skipping."
+          exit 0
+      fi
+
+      URL="https://storage.gtucker.io/packages/linux.git.tar.gz"
+      echo "Downloading tarball: ${URL}"
+      rm -f linux.git.tar.gz linux.git.tar.gz.sha256
+      curl -LO "${URL}"
+      curl -LO "${URL}".sha256
+
+      if sha256sum -c linux.git.tar.gz.sha256; then
+          echo "Extracting tarball"
+          tar xzf linux.git.tar.gz
+          chown 1000: -R linux.git
+      else
+          echo "Failed to download linux.git mirror tarball, clone required"
+      fi
+
+      rm -f linux.git.tar.gz linux.git.tar.gz.sha256
+
   - name: oconfig
     image: registry.gitlab.com/gtucker.io/renelick:main
     imagePullPolicy: Always
