@@ -15,26 +15,40 @@ spec:
     secret:
       secretName: api-key
   steps:
-  - name: directory
+  - name: directories
+    image: alpine/git:v2.49.1
+    workingDir: $(workspaces.sandbox.path)
+    script: |
+      #!/usr/bin/env ash
+      set -eo pipefail
+      install -d mirror -o 1000 -m 0755
+      install -d src -o 1000 -m 0755
+      install -d vixi -o 1000 -m 0755
+      ls -l
+
+  # Note: keeping a checkout of vixi.git here is a development trick
+  - name: checkout
     image: alpine/git:v2.49.1
     workingDir: $(workspaces.sandbox.path)
     securityContext:
       runAsNonRoot: true
       runAsUser: 1000
-    # Note: keeping a checkout of vixi.git here is a development trick
     script: |
       #!/usr/bin/env ash
       set -eo pipefail
-
-      mkdir -p mirror
-      mkdir -p src
-      [ -d vixi ] || git clone https://gitlab.com/gtucker/vixi.git
-      (cd vixi; git fetch origin main; git checkout FETCH_HEAD;)
+      [ -d vixi/.git ] || git clone https://gitlab.com/gtucker/vixi.git
+      cd vixi
+      git config set advice.detachedHead false
+      git fetch origin main
+      git checkout FETCH_HEAD
       ls -l
 
   - name: linux-mirror
     image: alpine/curl:8.14.1
     workingDir: $(workspaces.sandbox.path)/mirror
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
     script: |
       #!/usr/bin/env ash
       set -eo pipefail
