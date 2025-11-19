@@ -184,6 +184,7 @@ def upload_artifacts(base, parent):
         rk = Client().api
         storage = rk_storage(storage_name)
         dest = os.path.join(
+            'vixi',
             parent.data['revision']['tree'],
             parent.data['revision']['describe'],
             job,
