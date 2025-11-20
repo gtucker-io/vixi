@@ -60,6 +60,8 @@ if [ -n "$deployments" ]; then
 fi
 
 echo "Initialising resources..."
+kubectl get taskrun -o name | grep -e '\(kboot\|kbuild\)-init' | \
+    xargs -r kubectl delete || true
 kubectl create -f tekton/init.yaml
 
 echo "Waiting for tasks to complete..."
