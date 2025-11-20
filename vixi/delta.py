@@ -137,7 +137,7 @@ class Delta:
                 'parent': artifact.parent,
             }),
         ))
-        return self._find_one(
+        return _find_one(
             'kind=vixi.group',
             f'task.id={task.id}',
             f'name={self._res.root.name}',
