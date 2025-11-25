@@ -1,5 +1,5 @@
-VIXI Demo #1 – From Git to KUnit results
-========================================
+VIXI Demo No.1 – From Git to KUnit results
+==========================================
 
 More than a plain example, this is an end-to-end demo to showcase what VIXI
 currently does.  It uses a Renelick v0.21 instance and SSH to upload artifacts
