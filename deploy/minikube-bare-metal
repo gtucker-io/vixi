@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+#
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2025 Guillaume Tucker
+#
+#
+# WARNING: USE AT YOUR OWN RISK
+#
+# This deployment variant installs minikube directly on the host.  It typically
+# increases performance but requires root privileges and is only suitable to
+# use on a dedicated machine, not on a regular workstation or laptop.
+
+set -eo pipefail
+
+# -----------------------------------------------------------------------------
+# Install common packages
+#
+
+sudo apt --fix-broken install -y
+sudo apt update && sudo apt install -y \
+    apt-transport-https ca-certificates curl gnupg
+
+# -----------------------------------------------------------------------------
+# Install latest Docker from docker.com
+#
+
+sudo apt remove -y $(dpkg --get-selections \
+    containerd docker.io docker-compose docker-doc podman-docker runc \
+    | cut -f1)
+sudo install -m 0755 -d /etc/apt/keyrings
+[ -f /etc/apt/keyrings/docker.asc ] || {
+    sudo curl -fsSL \
+        https://download.docker.com/linux/debian/gpg \
+        -o /etc/apt/keyrings/docker.asc
+    sudo chmod a+r /etc/apt/keyrings/docker.asc
+}
+
+[ -f /etc/apt/sources.list.d/docker.sources ] || {
+    sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
+Types: deb
+URIs: https://download.docker.com/linux/debian
+Suites: $(. /etc/os-release && echo "$VERSION_CODENAME")
+Components: stable
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
+}
+
+sudo apt update && sudo apt install -y \
+    docker-ce \
+    docker-ce-cli \
+    containerd.io \
+    docker-buildx-plugin \
+    docker-compose-plugin
+
+sudo docker run hello-world || {
+    echo "Docker installation failed, aborting."
+    exit 1
+}
+
+# -----------------------------------------------------------------------------
+# Install additional low-level container management packages
+#
+
+[ -f /etc/apt/keyrings/kubernetes-apt-keyring.gpg ] || {
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.34/deb/Release.key \
+        | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    sudo chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+}
+[ -f /etc/apt/sources.list.d/kubernetes.list ] || {
+    echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.34/deb/ /' \
+        | sudo tee /etc/apt/sources.list.d/kubernetes.list
+    sudo chmod 644 /etc/apt/sources.list.d/kubernetes.list
+}
+
+sudo apt update && sudo apt install -y \
+    conntrack \
+    containernetworking-plugins \
+    cri-tools \
+    iptables \
+    kubectl
+
+[ -f cri-dockerd_0.3.21.3-0.debian-bookworm_amd64.deb ] || {
+    curl -LO https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.21/cri-dockerd_0.3.21.3-0.debian-bookworm_amd64.deb
+    sudo dpkg -i cri-dockerd_0.3.21.3-0.debian-bookworm_amd64.deb \
+        || sudo apt --fix-broken install -y
+}
+
+[ -d /opt/cni/bin ] || {
+    curl -LO https://github.com/containernetworking/plugins/releases/download/v1.8.0/cni-plugins-linux-amd64-v1.8.0.tgz
+    sudo mkdir -p /opt/cni/bin
+    sudo tar xf cni-plugins-linux-amd64-v1.8.0.tgz -C /opt/cni/bin
+}
+
+# Required on some systems - ToDo: clarify why
+sudo sysctl fs.protected_regular=0
+
+# To have PVCs on the main disk and not in tmpfs:
+grep hostpath-provisioner /etc/fstab || {
+  sudo mkdir -p /opt/hostpath-provisioner
+  sudo mkdir -p /tmp/hostpath-provisioner
+  echo "/opt/hostpath-provisioner /tmp/hostpath-provisioner none defaults,bind 0 0" \
+  | sudo tee -a /etc/fstab
+  sudo systemctl daemon-reload
+}
+sudo mount /tmp/hostpath-provisioner
+
+# -----------------------------------------------------------------------------
+# Now actually install minikube
+#
+
+which minikube > /dev/null 2>&1 || {
+    which dpkg || {
+        echo "MiniKube not found, please install it:"
+        echo https://minikube.sigs.k8s.io/docs/start/
+        exit 1
+    }
+    echo Installing MiniKube for Debian
+    [ -f minikube_latest_amd64.deb ] || {
+        curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
+    }
+    ls -l minikube_latest_amd64.deb
+    sudo dpkg -i minikube_latest_amd64.deb
+}
+
+minikube version
+minikube start --driver=none
+minikube addons enable metrics-server
+
+kubectl label node/$(hostname) vixi/app=true
+kubectl label node/$(hostname) vixi/worker=true
+kubectl label node/$(hostname) vixi/kvm-worker=true
+
+kubectl config set-context --current --namespace=vixi
+
+exit 0
