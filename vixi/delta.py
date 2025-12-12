@@ -26,7 +26,6 @@ Scalpel.  Having both post-processing solutions available in parallel is a
 useful experiment in any case.
 """
 
-from datetime import datetime, timedelta
 import re
 from subprocess import SubprocessError
 
@@ -35,12 +34,10 @@ from renelick.client import (
     NewNodeData as Data,
     NewTree as Tree,
     RenelickError,
-    Task,
-    TaskAttributes,
 )
 
 from . import kbuild
-from .base import run_and_wait, sh, shx
+from .base import ExtendedClient, sh, shx
 
 
 class Results:
@@ -63,8 +60,9 @@ class Delta:
 
     REMOTE_RE = re.compile(r'^([a-zA-Z0-9_\-\.]+)\t(.*\.git) \(fetch\)$')
 
-    def __init__(self, api, root_id, task):
-        self._api = api
+    def __init__(self, client, root_id, task):
+        self._client = client
+        self._api = self._client.api
         self._task = task
         root = self._api.node.get(root_id)
         if root.kind != 'vixi.group':
@@ -106,40 +104,12 @@ class Delta:
         return base[0] if base else None
 
     def _make_base(self, base_sha1):
-
-        def _find_one(*fields):
-            found = self._api.node.find(fields)
-            if len(found) != 1:
-                raise RenelickError(f"Failed to find single node {fields}")
-            return found[0]
-
-        task = run_and_wait(self._api, Task(
-            name=self._res.root.name,  # ToDo: improve this
-            # name=self._res.root.task.attributes['job'] ?
-            scheduler='tekton',  # ToDo: self.data['scheduler']
-            timeout=datetime.now() + timedelta(minutes=30),
-            attributes=TaskAttributes.from_dict({
-                'tree': self._res.revision['tree'],
-                'url': self._res.revision['url'],
-                'revision': base_sha1,
-                'job': 'delta',
-            }),
-        ))
-        artifact = _find_one(
-            f'task.id={task.id}', 'kind=artifact-v1', 'name=kunit.json',
+        replay = self._client.replay_tasks(
+            self._res.root, {'job': 'delta', 'revision': base_sha1}
         )
-        task = run_and_wait(self._api, Task(
-            name='kunit-parser',
-            scheduler='inline-vixi',
-            timeout=datetime.now() + timedelta(minutes=10),
-            attributes=TaskAttributes.from_dict({
-                'artifact': artifact.id,
-                'parent': artifact.parent,
-            }),
-        ))
-        return _find_one(
+        return self._client.find_single_node(
             'kind=vixi.group',
-            f'task.id={task.id}',
+            f'task.id={replay[-1].id}',
             f'name={self._res.root.name}',
         )
 
@@ -207,9 +177,11 @@ class Delta:
 
 if __name__ == '__main__':
     import sys
-    from renelick.client import Client
-    rid = sys.argv[1] if len(sys.argv) > 1 else '690a1ab6fea960c52a411634'
-    _, _, breaking = Delta(Client().api, rid, None).run('/workspace/sandbox')
+
+    root = sys.argv[1] if len(sys.argv) > 1 else '6946874e2a7e93d186fde207'
+    client = ExtendedClient(verbose=True)
+    _, _, breaking = Delta(client, root, None).run('/workspace/sandbox')
+
     for delta in breaking:
         delta_data = delta.data.to_dict()
         print(f"BREAK {delta_data['root']} {' '.join(delta_data['path'])}")
