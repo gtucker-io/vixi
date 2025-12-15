@@ -11,7 +11,8 @@ useful results.
 To keep things simple initially, only plain defconfig x86 builds are enabled
 which allows for a streamlined pipeline to focus on feature development.
 Coverage will then grow incrementally as things evolve to keep optimising the
-whole design along the way.
+whole design along the way.  The build then goes through a boot test using KVM
+and KUnit is also run in parallel.
 
 Here's the list of high-level features and their current status:
 
@@ -24,7 +25,8 @@ Here's the list of high-level features and their current status:
   * ☑ check out the Git revision with persistent mirror
   * ☑ build the kernel using a kernel.org toolchain
   * ☑ upload artifacts to storage via SSH
-  * ☐ parse logs and retrieve build status
+  * ☑ propagate build status
+  * ☐ parse logs for warnings and errors
 * ☑ kboot pipeline
   * ☑ boot a kernel image using KVM in KubeVirt
   * ☐ parse logs and look for any kernel errors
@@ -63,9 +65,9 @@ demand but not continuously yet:
 When a new revision is found, which could be a series of patches via email, a
 Git branch or anything of this kind, a trigger event is sent with the
 corresponding information.  The orchestrator service then receives this event
-and schedules any tasks that match its configuration rules.  Typically, this
-would be a kernel build and a KUnit run.  Some suitable schedulers need to
-accept the tasks and run them in a dedicated runtime environment such as a
+and schedules all the tasks that match its configuration rules.  Typically,
+this would be a kernel build and a KUnit run.  Some suitable schedulers need to
+accept the tasks and run them in their dedicated runtime environment such as a
 [Tekton pipeline](https://tekton.dev/docs/pipelines).  When each of them
 completes, the orchestrator receives a corresponding event and may then
 schedule downstream tasks.  For example, kernel builds are followed by a KVM
@@ -75,36 +77,36 @@ the database with a standard schema so they can be post-processed in a generic
 way to detect regressions and run bisections.
 
 The orchestrator rules can use any event and specify any fields that need to
-match in the event data.  There are currently 3 types of events sent to their
-dedicated pub/sub channels: `node`, `task` and `vixi`.  Tekton pipelines and
-other tasks produce some data nodes with results and artifacts.  An event is
-sent every time a node is created on the `node` channel which can be used to
-run tasks in a data-driven way.  When tasks are scheduled, run, complete or
-change state in any way, events are sent to the `task` channel which can be
-used to chain other tasks directly rather than relying on the data they
-produce.  While this might be easier to set up, it is more fragile as it relies
-on implicit expectations about what each task actually does.  Then the VIXI
-application uses some specific events on the `vixi` channel to get the initial
-trigger with a new revision to test or to send real-time updates while tasks
-are running such as bisection iterations and progress.
+match in the event data.  There are currently 3 categories of events, each sent
+to their respective pub/sub channel: `node`, `task` and `vixi`.  Tekton
+pipelines and other tasks produce some data nodes with results and artifacts.
+An event is sent every time a node is created on the `node` channel which can
+be used to trigger tasks in a data-driven way.  When tasks are scheduled, run,
+complete or change state in any respect, events are sent to the `task` channel
+which can be used to chain other tasks directly rather than relying on the data
+they produce.  While this might be easier to set up, it is more fragile as it
+relies on implicit expectations about what each task actually does.  Then the
+VIXI application uses some specific events on the `vixi` channel to get the
+initial trigger with a new revision to test or to send real-time updates while
+tasks are running such as bisection iterations and progress.
 
-Low-level tasks are run in the `tekton` runtime to build kernels, boot them in
-KVM and run KUnit.  They produce some raw data which then needs to be processed
-to determine whether things passed or failed.  The post-processing is typically
-done in the `inline` runtime which runs tasks directly in the Python process.
-These tasks are meant to be short-lived and last a few seconds at most or use
-small amounts of compute resources.  For example, KUnit JSON results are
-processed inline once the Tekton task has completed to create a tree of data
-nodes.  Bisection tasks are run inline but stay around as they need to maintain
-the Git bisect state between each iteration.
+Low-level tasks which require substantial compure power are run in the `tekton`
+runtime to build kernels, boot them in KVM and run KUnit.  They produce some
+raw data which then needs to be processed to determine whether things passed or
+failed.  The post-processing is typically done in the `inline` runtime which
+executes tasks directly in the Python process.  These tasks are meant to be
+short-lived and last a few seconds at most or use small amounts of compute
+resources.  For example, KUnit JSON results are processed inline once the
+Tekton task has completed to create a tree of data nodes.  Bisection tasks are
+run inline but stay around for a while as they need to maintain the Git bisect
+state between each iteration.
 
 Based on this, any behaviour or workflow can be configured.  A single revision
 can trigger multiple builds, and each build can trigger multiple boots and
 tests.  Initially, the pipelines will be doing only a linear series of tasks
-with a single optimised path to runtime results and then scale gradually.
-Subsequent tests can be run after a boot completes and other post-processing
-tasks may be run such as bisections, statistics, log parsers, report generators
-etc.
+with a single optimised path and then scale gradually.  Subsequent tests can be
+run after a boot completes and other post-processing tasks may be run such as
+bisections, statistics, log parsers, report generators etc.
 
 ### Checkouts with Git mirrors
 
@@ -147,8 +149,8 @@ be on-demand VMs in e.g. GCP to avoid the combined complexity of Kubernetes,
 Tekton and KubeVirt but would require more low-level provisioning and resource
 management.
 
-Building upon this, other runtime tests can be run in the same environment such
-as kselftest or LTP.
+Building upon this, other tests can be run in the same environment such as
+kselftest or LTP.
 
 ## Setup
 
@@ -156,7 +158,9 @@ Deployment is meant to happen in a Kubernetes cluster.  Currently, minikube and
 GKE are supported out of the box.  minikube is fine by default for development,
 GKE is better suited for variable production workloads.
 
-To create a minikube cluster:
+To create a minikube cluster, first make sure you've got
+[Docker](https://docs.docker.com/engine/install/debian/) installed.  Then you
+can run the installation script to set up the local cluster:
 
 ```
 deploy/minikube
@@ -173,8 +177,8 @@ You'll then need to install the standard `kubectl` tool as per the [Kubernetes
 documentation](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-native-package-management)
 to manage the cluster.
 
-Then make sure your cluster is the one currently selected with `kubectl
-use-context` and deploy all the Kubernetes resources:
+Make sure your cluster is the one currently selected with `kubectl use-context`
+and deploy all the Kubernetes resources:
 
 ```
 deploy/tekton
@@ -188,10 +192,32 @@ deploy/vixi
 As a special tip and to highlight the flexibility of Kubernetes deployments,
 it's possible to use e.g. a laptop for develoment with the orchestrator and
 monitor while deploying the schedulers on a fixed workstation to do the heavy
-lifting.  This can be done by directly running a subset of the `kubectl apply`
-commands found in `deploy/vixi` on each machine.  Multiple `tekton` and
-`inline` instances can be deployed as Renelick tasks will only be accepted by
-one matching scheduler to provide classic load balancing and redundancy.
+lifting.  This can be done by specifying the list of features to install with
+`deploy/vixi`:
+
+```
+orchestrator monitor sched-inline sched-tekton sched-tekton-kvm
+```
+
+By default, everything gets deployed.  If KVM isn't supported, you can run the
+script with all the other features listed on the command line.  It's also
+possible to deploy just the lightweight services locally and Tekton on a
+different machine, for example:
+
+```
+deploy/vixi orchestrator monitor sched-inline
+```
+
+```
+deploy/vixi sched-inline sched-tekton
+```
+
+Any number of `sched-tekton` and `sched-inline` instances may be deployed as
+Renelick tasks will only be accepted by one matching scheduler to provide
+classic load balancing and redundancy.  Monitors can be deployed on each worker
+machine too as they just read events and logs them locally.  There should
+however be only one orchestrator service deployed, otherwise the rules will be
+applied multiple times and tasks will be duplicated.
 
 ## Usage
 
@@ -202,21 +228,18 @@ either installed natively on your host machine or in a Docker image and use the
 `renelick task run` command.  We'll first focus on the high-level approach
 which relies on the orchestrator using VIXI events.
 
-To update Git mirrors, send an event of this kind with the name of the Git
-tree:
+Updating Git mirrors is not done via the orchestrator as it's a property of
+each local worker machine.  Instead, they can be run with `kubectl`:
 
 ```
-renelick send vixi event=mirror tree=torvalds
+kubectl create -f tekton/mirror-torvalds.yaml
 ```
 
-The Git tree names are listed in the orchestrator configuration file
-`oconfig.yaml`.
-
-Then to manually trigger pipelines to be run on a new Git revision, another
-VIXI event such as this one can be sent:
+Then to cause the orchestrator to trigger pipelines on a particular Git
+revision, a VIXI event such as this one can be sent:
 
 ```
-renelick send vixi event=trigger source=git tree=torvalds
+renelick send vixi event=trigger source=git tree=torvalds revision=v6.19-rc5
 ```
 
 This will result in `kbuild` and `kunit` pipelines to be run in Tekton with
@@ -234,14 +257,14 @@ renelick task run tekton \
 ```
 
 Please note that tasks that are started manually still generate data and events
-which may cause the orchestrator to run other tasks.  In the example above, the
-orchestrator would typically start a KVM boot pipeline when the build
-completes.  Additional flags may be used to prevent this behaviour at the VIXI
-qapplication level and the orchestrator config would need to be updated
-accordingly.
+which may cause the orchestrator to run other tasks.  To avoid this, add an
+`orch=debug` attribute to the task and the orchestrator will filter it out.  In
+the example above, it would otherwise typically start a KVM boot pipeline when
+the build completes.
 
 ## Demo time
 
 A number of demos are provided to showcase how this all fits together:
 
 1. [From Git to KUnit](/docs/demo-1-git-to-kunit.md)
+1. [Delta and Git bisect](/docs/demo-2-delta-and-git-bisect.md)
