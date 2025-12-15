@@ -119,18 +119,22 @@ class VixiOrchestrator(Subscriber):
     # ToDo: consolidate with kbuild
     async def _run_kunit(self, event, scheduler):
         tree, revision = (event[key] for key in ['tree', 'revision'])
+        test_filter = event.get('filter', '')
         tree_config = self._oconfig['trees'].get(tree)
         if tree_config is None:
             raise RenelickError(f"Unknown tree: {tree}")
+        timeout_spec = {'minutes': 90}
         task = self._api.task.schedule(Task(
             name='kunit',
             scheduler=scheduler,
-            timeout=datetime.now() + timedelta(minutes=90),
+            timeout=datetime.now() + timedelta(**timeout_spec),
             attributes=TaskAttributes.from_dict({
                 'tree': tree,
                 'url': tree_config['url'],
                 'revision': revision,
+                'filter': test_filter,
                 'job': 'kunit',
+                'timeout-spec': timeout_spec,
             }),
         ))
         tag = f"kunit-{tree}-{revision}"
@@ -149,13 +153,21 @@ class VixiOrchestrator(Subscriber):
         # ToDo: add syntax to match with attributes in oconfig.yaml directly
         if artifact.task.attributes.to_dict().get('job') != 'kunit':
             return
+        timeout_spec = {'minutes': 15}
         task = self._api.task.schedule(Task(
             name='kunit-parser',
             scheduler=scheduler,
-            timeout=datetime.now() + timedelta(minutes=15),
+            timeout=datetime.now() + timedelta(**timeout_spec),
             attributes=TaskAttributes.from_dict({
-                'artifact': artifact.id,
                 'job': 'kunit',
+                'input-nodes': {
+                    'artifact': {
+                        'id': artifact.id,
+                        'kind': 'artifact-v1',
+                        'name': 'kunit.json',
+                    },
+                },
+                'timeout-spec': timeout_spec,
             }),
         ))
         parent = self._api.node.get(artifact.parent)

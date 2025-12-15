@@ -37,7 +37,9 @@ class InlineVIXI(Runtime):
 
     def _run_kunit_parser(self, task: Task):
         attrs = task.attributes.to_dict()
-        vixi.kunit.parse(self._api, attrs['artifact'], task)
+        vixi.kunit.parse(
+            self._api, attrs['input-nodes']['artifact']['id'], task
+        )
         self._api.task.complete(task.id)
 
     def _run_delta(self, task: Task):
