@@ -9,6 +9,7 @@ from renelick.client import Client, ServiceConfig
 from renelick.client.api import Task, TaskAttributes
 from renelick.client.exceptions import RenelickError
 from renelick.client.service import Subscriber
+from .base import ExtendedClient
 
 
 class VixiOrchestrator(Subscriber):
@@ -29,8 +30,9 @@ class VixiOrchestrator(Subscriber):
         channels=['node', 'vixi', 'task'],
     )
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, client, *args, **kwargs):
+        super().__init__(client.api, *args, **kwargs)
+        self._client = client
         self._oconfig = None
 
     def load_oconfig(self, node=None):
@@ -143,13 +145,9 @@ class VixiOrchestrator(Subscriber):
     async def _run_kunit_parser(self, event, scheduler):
         # The task is gone at this point which is why we need to retrive a node
         task_id = event['id']
-        found = self._api.node.find([
+        artifact = self._client.find_single_node(
             f'task.id={task_id}', 'kind=artifact-v1', 'name=kunit.json'
-        ])
-        if len(found) != 1:
-            self.log.error(f"Found {len(found)} JSON artifacts, expected 1")
-            return
-        artifact = found[0]
+        )
         # ToDo: add syntax to match with attributes in oconfig.yaml directly
         if artifact.task.attributes.to_dict().get('job') != 'kunit':
             return
@@ -249,4 +247,4 @@ class VixiOrchestrator(Subscriber):
 
 
 if __name__ == '__main__':
-    VixiOrchestrator(Client().api).loop()
+    VixiOrchestrator(ExtendedClient()).loop()
