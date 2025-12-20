@@ -58,10 +58,9 @@ class InlineVIXI(Runtime):
         attrs = task.attributes.to_dict()
         with tempfile.TemporaryDirectory() as artifacts:
             vixi.bisect.Bisection(
-                self._api, self._client.storage, attrs['delta'], task
+                self._client, attrs['delta'], task
             ).run(
-                self.WORKSPACE,
-                artifacts,
+                self.WORKSPACE, artifacts,
             )
         self._api.task.complete(task.id)
 
