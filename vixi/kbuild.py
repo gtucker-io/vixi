@@ -128,6 +128,8 @@ def checkout(sandbox, path, revision, clean=False, gitonly=False):
     print(f"URL:      {url}")
     print(f"Revision: {sha1}")
     cwd = os.path.join(sandbox, path, tree)
+    if gitonly is True:
+        cwd += '.git'
     print(f"Checkout directory: {cwd}")
     if clean is True:
         print("Deleting any existing checkout")
@@ -136,11 +138,12 @@ def checkout(sandbox, path, revision, clean=False, gitonly=False):
         shx(f'mkdir -p {cwd}')
         mirror = os.path.join(sandbox, 'mirror', f'{tree}.git')
         print(f"New checkout, mirror: {mirror}")
-        opts = '--no-checkout' if gitonly else ''
+        opts = '--bare' if gitonly else ''
         shx(f'git clone -v --reference-if-able={mirror} {opts} {url} {cwd}')
     shx('git remote -v', cwd)
     shx(f'git fetch --tags origin {sha1}', cwd)
     if not gitonly:
+        shx('git reset --hard', cwd)
         shx('git checkout FETCH_HEAD', cwd)
         shx(f'git fetch --tags {TORVALDS}', cwd)
         print(sh('git log -n1', cwd))
