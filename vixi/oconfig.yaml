@@ -32,13 +32,13 @@ switchboard:
   channel: vixi
   match: {event: trigger, source: git}
   params: [tree, revision]
-  scheduler: tekton
+  scheduler: tekton-kvm  # until kboot docker images are refactored
 
   # boot a kernel in KubeVirt
 - task: kboot-docker
   channel: node
   match: {kind: vixi.kbuild.docker, op: add}
-  scheduler: tekton
+  scheduler: tekton-kvm
 
   # run KUnit in Tekton
 - task: kunit
