@@ -66,28 +66,6 @@ def complete(uuid=None):
         renelick.client.Client().api.task.complete(uuid)
 
 
-def run_and_wait(api, task):
-    """Schedule a Task to run and wait for it to complete"""
-    sub = api.event.subscribe('task')
-    task = api.task.schedule(task)
-    task_id = str(task.id)
-    print(f"Waiting for task to complete: {task_id} {task.name}")
-    status = None
-    while status is None:
-        ev = api.event.receive(sub)
-        if ev.data['id'] == task_id:
-            op = ev.data['op']
-            print(f"{ev['time']}  {op}")
-            if op == 'complete':
-                status = True
-            elif op == 'abort' or op == 'timeout':
-                status = False
-    api.event.unsubscribe(sub)
-    if status != True:
-        raise renelick.client.RenelickError("Task failed to run")
-    return task
-
-
 class ExtendedClient(renelick.client.Client):
     """Extended client features based on the Renelick API"""
 
