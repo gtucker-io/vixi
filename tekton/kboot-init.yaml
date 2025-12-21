@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2024, 2025 Guillaume Tucker
+
+apiVersion: tekton.dev/v1
+kind: TaskRun
+metadata:
+  generateName: init-kboot-
+  namespace: vixi
+spec:
+  taskRef:
+    name: init-kboot-volume
+  timeout: "0h10m0s"
+  workspaces:
+  - name: kboot
+    persistentVolumeClaim:
+      claimName: kboot

@@ -126,7 +126,7 @@ spec:
                     #cloud-config
               - name: sandbox
                 persistentVolumeClaim:
-                  claimName: kboot-sandbox
+                  claimName: kboot
 
   - name: payload
     taskRef:
@@ -172,7 +172,7 @@ spec:
           secretName: api-key
       - name: sandbox
         persistentVolumeClaim:
-          claimName: kboot-sandbox
+          claimName: kboot
       steps:
       - name: summary
         image: registry.gitlab.com/gtucker.io/renelick:main

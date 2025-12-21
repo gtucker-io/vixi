@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2024, 2025 Guillaume Tucker
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kboot
+  namespace: vixi
+  annotations:
+    user.custom.annotation/storage.thick-provisioned: "true"
+spec:
+  accessModes:
+  - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 12Gi
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: init-kboot-volume
+  namespace: vixi
+spec:
+  workspaces:
+  - name: kboot
+  steps:
+  - name: disk
+    image: alpine:3.22.1
+    workingDir: $(workspaces.kboot.path)
+    script: |
+      #!/usr/bin/env ash
+      set -eo pipefail
+
+      apk add e2fsprogs  # ToDo: include in Docker image
+
+      [ -f disk.img ] || {
+          truncate -s 10G disk.img
+          mkfs.ext4 disk.img
+      }
+
+      ls -lh
+      fsck.ext4 -p disk.img
