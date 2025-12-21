@@ -33,6 +33,24 @@ spec:
       - name: sandbox
         persistentVolumeClaim:
           claimName: sandbox
+      initContainers:
+      - name: oconfig
+        image: registry.gitlab.com/gtucker.io/renelick:main
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: api-key
+          mountPath: /home/renelick/.config/renelick
+        - name: sandbox
+          mountPath: /sandbox
+        workingDir: /sandbox/vixi
+        command:
+        - '/usr/bin/env'
+        - 'python'
+        - '-m'
+        - 'vixi.oconfig'
+        - '--verbose'
+        - '--dump'
+
       containers:
       - name: orchestrator
         image: registry.gitlab.com/gtucker.io/renelick:main

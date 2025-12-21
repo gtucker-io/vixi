@@ -5,34 +5,6 @@
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: kbuild-sandbox-init
-  namespace: vixi
-spec:
-  workspaces:
-  - name: sandbox
-  volumes:
-  - name: api-key
-    secret:
-      secretName: api-key
-  steps:
-  - name: oconfig
-    image: registry.gitlab.com/gtucker.io/renelick:main
-    imagePullPolicy: Always
-    workingDir: $(workspaces.sandbox.path)
-    volumeMounts:
-    - name: api-key
-      mountPath: /home/renelick/.config/renelick
-    env:
-    - { name: PYTHONPATH, value: $(workspaces.sandbox.path)/vixi }
-    script: |
-      #!/usr/bin/env python
-      import vixi.oconfig
-      vixi.oconfig.push('vixi/vixi/oconfig.yaml', verbose=True, dump=True)
----
-
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
   name: kbuild-mirror
   namespace: vixi
 spec:
