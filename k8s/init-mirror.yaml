@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2025 Guillaume Tucker
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-mirror
+  namespace: vixi
+spec:
+  activeDeadlineSeconds: 3600
+  ttlSecondsAfterFinished: 60
+  completions: 1
+  parallelism: 1
+  template:
+    metadata:
+      name: init-mirror
+    spec:
+      restartPolicy: Never
+      volumes:
+      - name: sandbox
+        persistentVolumeClaim:
+          claimName: sandbox
+      containers:
+      - name: linux-mirror
+        image: alpine/curl:8.14.1
+        volumeMounts:
+        - name: sandbox
+          mountPath: /sandbox
+        workingDir: /sandbox/mirror
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+        command:
+        - 'ash'
+        - '-c'
+        - |
+          set -eo pipefail
+
+          if [ -d linux.git ]; then
+              echo "linux.git mirror directory already present, skipping."
+              exit 0
+          fi
+
+          URL="https://storage.gtucker.io/packages/linux.git.tar.gz"
+          echo "Downloading tarball: ${URL}"
+          rm -f linux.git.tar.gz linux.git.tar.gz.sha256
+          curl -LO "${URL}"
+          curl -LO "${URL}".sha256
+
+          echo "Computing checksum"
+          if sha256sum -c linux.git.tar.gz.sha256; then
+              echo "Extracting tarball"
+              tar xzf linux.git.tar.gz
+          else
+              echo "Failed to download linux.git mirror tarball, clone required"
+          fi
+
+          echo "Removing tarball file"
+          rm -f linux.git.tar.gz linux.git.tar.gz.sha256

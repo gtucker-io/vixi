@@ -1,0 +1,74 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2024, 2025 Guillaume Tucker
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sandbox
+  namespace: vixi
+spec:
+  accessModes:
+  - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 100Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-sandbox
+  namespace: vixi
+spec:
+  activeDeadlineSeconds: 300
+  ttlSecondsAfterFinished: 60
+  completions: 1
+  parallelism: 1
+  template:
+    metadata:
+      name: init-sandbox
+    spec:
+      restartPolicy: Never
+      volumes:
+      - name: sandbox
+        persistentVolumeClaim:
+          claimName: sandbox
+      initContainers:
+      - name: directories
+        image: alpine:3.22.1
+        volumeMounts:
+        - name: sandbox
+          mountPath: /sandbox
+        command:
+        - 'ash'
+        - '-c'
+        - |
+          set -eo pipefail
+          install -d /sandbox/mirror -o 1000 -m 0755
+          install -d /sandbox/src -o 1000 -m 0755
+          install -d /sandbox/vixi -o 1000 -m 0755
+          ls -l /sandbox
+
+      containers:
+      # Note: keeping a checkout of vixi.git here is a development trick
+      - name: vixi-checkout
+        image: alpine/git:v2.49.1
+        volumeMounts:
+        - name: sandbox
+          mountPath: /sandbox
+        workingDir: /sandbox
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+        command:
+        - 'ash'
+        - '-c'
+        - |
+          set -eo pipefail
+          [ -d vixi/.git ] || git clone https://gitlab.com/gtucker/vixi.git
+          cd vixi
+          git config set advice.detachedHead false
+          git fetch origin main
+          git checkout FETCH_HEAD
+          ls -l

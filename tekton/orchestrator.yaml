@@ -30,9 +30,9 @@ spec:
       - name: api-key
         secret:
           secretName: api-key
-      - name: kbuild-sandbox
+      - name: sandbox
         persistentVolumeClaim:
-          claimName: kbuild-sandbox
+          claimName: sandbox
       containers:
       - name: orchestrator
         image: registry.gitlab.com/gtucker.io/renelick:main
@@ -40,9 +40,9 @@ spec:
         volumeMounts:
         - name: api-key
           mountPath: /home/renelick/.config/renelick
-        - name: kbuild-sandbox
-          mountPath: /workspace/sandbox
+        - name: sandbox
+          mountPath: /sandbox
         env:
         - name: PYTHONPATH  # development
-          value: /workspace/sandbox/vixi
+          value: /sandbox/vixi
         command: ['/usr/bin/env', 'python', '-m', 'vixi.orchestrator']
