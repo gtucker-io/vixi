@@ -5,45 +5,6 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sched-tekton
-  namespace: vixi
-spec:
-  replicas: 1
-  revisionHistoryLimit: 0
-  selector:
-    matchLabels:
-      app: sched-tekton
-  template:
-    metadata:
-      labels:
-        app: sched-tekton
-    spec:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: vixi/app
-                operator: In
-                values: ['true']
-      volumes:
-      - name: api-key
-        secret:
-          secretName: api-key
-      containers:
-      - name: scheduler
-        image: registry.gitlab.com/gtucker.io/renelick:main
-        imagePullPolicy: Always
-        volumeMounts:
-        - name: api-key
-          mountPath: /home/renelick/.config/renelick
-        # ToDo: add labels, also make the API filter based on the username
-        # ToDo: decouple scheduler name from runtime driver name
-        command: ['renelick', 'service', 'scheduler', '--runtime=tekton']
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
   name: sched-inline
   namespace: vixi
 spec:
@@ -82,7 +43,6 @@ spec:
         - name: kbuild-sandbox
           mountPath: /workspace/sandbox
         # ToDo: add labels, also make the API filter based on the username
-        # ToDo: decouple scheduler name from runtime driver name
         env:
         - name: PYTHONPATH  # development
           value: /workspace/sandbox/vixi

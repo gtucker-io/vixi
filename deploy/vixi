@@ -73,6 +73,7 @@ echo "Deploying services..."
 kubectl apply -f tekton/garbage.yaml
 kubectl apply -f tekton/monitor.yaml
 kubectl apply -f tekton/orchestrator.yaml
-kubectl apply -f tekton/schedulers.yaml
+kubectl apply -f tekton/sched-inline.yaml
+kubectl apply -f tekton/sched-tekton.yaml
 
 exit 0
