@@ -11,8 +11,7 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: kubevirt-cluster-role
-  namespace: vixi
+  name: vixi-kubevirt-runner
 rules:
 - apiGroups: [""]
   resources: [secrets]
@@ -33,11 +32,11 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: vixi-sa
+  name: kubevirt-role-binding
   namespace: vixi
 roleRef:
   kind: ClusterRole
-  name: kubevirt-cluster-role
+  name: vixi-kubevirt-runner
   apiGroup: rbac.authorization.k8s.io
 subjects:
 - kind: ServiceAccount
