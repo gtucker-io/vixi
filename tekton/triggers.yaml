@@ -14,7 +14,7 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: vixi-trigger-role-binding
+  name: trigger-role-binding
   namespace: vixi
 subjects:
 - kind: ServiceAccount
