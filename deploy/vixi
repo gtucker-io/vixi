@@ -6,8 +6,9 @@
 
 set -eo pipefail
 
-ALL="orchestrator sched-inline sched-tekton sched-tekton-kvm"
+ALL="orchestrator monitor sched-inline sched-tekton sched-tekton-kvm"
 DEPLOY_ORCHESTRATOR=
+DEPLOY_MONITOR=
 DEPLOY_INLINE=
 DEPLOY_MIRROR=
 DEPLOY_TEKTON=
@@ -22,6 +23,9 @@ for opt in ${OPTS}; do
     case "${opt}" in
         orchestrator)
             DEPLOY_ORCHESTRATOR=yes
+            ;;
+        monitor)
+            DEPLOY_MONITOR=yes
             ;;
         sched-inline)
             DEPLOY_INLINE=yes
@@ -136,6 +140,8 @@ tasks=$(kubectl get taskrun -o name | grep 'init-kboot') || true
 echo -e "\nDeploying services..."
 [ -n "${DEPLOY_ORCHESTRATOR}" ] && {
     kubectl apply -f k8s/orchestrator.yaml
+}
+[ -n "${DEPLOY_MONITOR}" ] && {
     kubectl apply -f k8s/monitor.yaml
 }
 [ -n "${DEPLOY_INLINE}" ] && {
