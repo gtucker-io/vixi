@@ -14,6 +14,10 @@ kubectl apply -f "$URL"pipeline/previous/v1.2.0/release.yaml
 echo "Deploying dashboard..."
 kubectl apply -f "$URL"dashboard/previous/v0.59.0/release.yaml
 
+echo "Waiting for webhook deployments..."
+kubectl wait -n tekton-pipelines deployment \
+    tekton-pipelines-webhook --for condition=Available --timeout 10m
+
 echo "Deploying triggers..."
 kubectl apply -f "$URL"triggers/previous/v0.32.0/release.yaml
 kubectl apply -f "$URL"triggers/previous/v0.32.0/interceptors.yaml
@@ -25,8 +29,6 @@ kubectl apply -k k8s/tekton
 rm k8s/tekton/feature-flags.yaml
 
 echo "Waiting for deployments..."
-kubectl wait -n tekton-pipelines deployment \
-    tekton-pipelines-webhook --for condition=Available --timeout 10m
 kubectl wait -n tekton-pipelines deployment \
     tekton-dashboard --for condition=Available --timeout 10m
 kubectl wait -n tekton-pipelines deployment \
