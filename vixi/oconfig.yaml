@@ -14,45 +14,45 @@ trees:
 
 switchboard:
 
-  # reload the orchestrator config when a new one is available
+# reload the orchestrator config when a new one is available
 - task: oconfig-reload
   channel: node
   match: {kind: vixi.oconfig, op: add}
   scheduler: null
 
-  # build a kernel in Tekton
+# build a kernel in Tekton
 - task: kbuild
   channel: vixi
   match: {event: trigger, source: git}
   params: [tree, revision]
-  scheduler: tekton-kvm  # until kboot docker images are refactored
+  scheduler: tekton
 
-  # boot a kernel in KubeVirt
-- task: kboot-docker
-  channel: node
-  match: {kind: vixi.kbuild.docker, op: add}
+# boot a kernel in KubeVirt
+- task: kboot
+  channel: task
+  match: {name: kbuild, op: complete}
   scheduler: tekton-kvm
 
-  # run KUnit in Tekton
+# run KUnit in Tekton
 - task: kunit
   channel: vixi
   match: {event: trigger, source: git}
   params: [tree, revision]
   scheduler: tekton
 
-  # parse KUnit results
+# parse KUnit results
 - task: kunit-parser
   channel: task
   match: {name: kunit, op: complete}
   scheduler: inline-vixi
 
-  # compute delta between test results
+# compute delta between test results
 - task: delta
   channel: node
   match: {kind: vixi.group, op: populate}
   scheduler: inline-vixi
 
-  # run a Git bisection based on found delta
+# run a Git bisection based on found delta
 - task: bisect
   channel: node
   match: {kind: vixi.delta, op: populate}

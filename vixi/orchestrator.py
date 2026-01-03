@@ -206,16 +206,20 @@ class VixiOrchestrator(Subscriber):
         ])
         self.log.info(f"{tag:48s}  {task.id}")
 
-    async def _run_kboot_docker(self, event, scheduler):
-        node = self._api.node.get(event['id'])
+    async def _run_kboot(self, event, scheduler):
+        task_id = event['id']
+        # Explicitly get the bzImage until a kbuild summary node can be used
+        bzImage = self._client.find_single_node(
+            f'task.id={task_id}', 'kind=artifact-v1', 'name=bzImage'
+        )
+        node = self._client.api.node.get(bzImage.parent)
         data = node.data.to_dict()
         task = self._api.task.schedule(Task(
             name='kboot',
             scheduler=scheduler,
             timeout=datetime.now() + timedelta(minutes=15),
             attributes=TaskAttributes.from_dict({
-                'parent': node.id,
-                'kernel-image': data['image'],
+                'parent': bzImage.id,
             }),
         ))
         tag = '-'.join((
