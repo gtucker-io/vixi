@@ -157,21 +157,6 @@ spec:
     - { name: step,        value: modules                                   }
     - { name: parent,      value: $(tasks.image-result.results.node-id)     }
 
-  # ---------------------------------------------------------------------------
-  # Docker image for KubeVirt
-  #
-  - name: docker-image
-    runAfter:
-    - image
-    taskRef:
-      name: kbuild-docker-image
-    workspaces:
-    - name: sandbox
-    - name: artifacts
-    - name: scratch
-    params:
-    - { name: parent, value: $(tasks.image-result.results.node-id) }
-
   # ToDo: Add a summary node as a child node of the last result node
   # i.e. "modules" with a summary of the results from all the nodes in the
   # lineage up to this point (with a "vixi.summary" schema).

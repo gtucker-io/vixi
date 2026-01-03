@@ -208,24 +208,3 @@ def upload_artifacts(base, parent):
                 }),
             ))
     return urls
-
-
-def add_docker_node(base):
-    """Add a database node for a kernel Docker image"""
-    opt, params = _load_opt(base)
-    uuid, job = (opt.get(key) for key in ('UUID', 'JOB'))
-    if not uuid:
-        print("WARNING - no task UUID defined, not building Docker image")
-        return None
-    rk = Client().api
-    return rk.node.add(Node(
-        name=':'.join((opt['TREE'], opt['DESCRIBE'], 'docker')),
-        kind='.'.join(('vixi', job, 'docker')),
-        parent=opt['PARENT'],
-        task=rk.task.get(uuid),
-        data=Data.from_dict({
-            'image': f'docker.io/gtucker/kernel-image:{uuid}',
-            'revision': _gather_revision(opt),
-            'params': params,
-        }),
-    ))
