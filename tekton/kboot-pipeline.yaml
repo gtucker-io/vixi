@@ -18,11 +18,12 @@ spec:
   - name: uuid
   - name: parent
   - name: storage
-  - name: kernel-image
   results:
   - name: node-id
     value: $(tasks.summary.results.node-id)
     description: Id of the boot summary node in the database
+  workspaces:
+  - name: artifacts
   tasks:
     # ToDo: Download parent node and get kernel Docker image name from it as
     # well as revision, build metadata etc. to populate an environment file in
@@ -30,6 +31,54 @@ spec:
     #
     # ToDo: Upload artifacts with path prefix e.g.:
     # ${TREE}/${BRANCH}/${DESCRIBE}/${ARCH}
+
+  - name: docker
+    taskSpec:
+      results:
+      - name: kernel-image
+      workspaces:
+      - name: artifacts
+      volumes:
+      - name: dind-socket
+        hostPath:
+          path: /var/run/docker.sock
+          type: Socket
+      - name: api-key
+        secret:
+          secretName: api-key
+      - name: sandbox
+        persistentVolumeClaim:
+          claimName: kboot
+
+      steps:
+      - name: artifacts
+        image: registry.gitlab.com/gtucker.io/renelick:main
+        imagePullPolicy: Always
+        workingDir: $(workspaces.artifacts.path)
+        volumeMounts:
+        - name: api-key
+          mountPath: /home/renelick/.config/renelick
+        env:
+        - { name: PARENT,  value: $(params.parent)  }
+        script: |
+          # ToDo: use summary parent node and download modules.tar.gz too
+          renelick storage get "${PARENT}"
+          ls -l
+
+      - name: images
+        image: docker:28.3.3
+        workingDir: $(workspaces.artifacts.path)
+        volumeMounts:
+        - name: dind-socket
+          mountPath: /var/run/docker.sock
+        env:
+        - { name: UUID,    value: $(params.uuid)    }
+        script: |
+          tag="kernel-image:${UUID}"
+          echo "FROM scratch" > Dockerfile
+          echo "ADD --chown=107:107 bzImage boot/bzImage" >> Dockerfile
+          docker build . --no-cache --tag "${tag}"
+          echo "${tag}" | tee $(results.kernel-image.path)
 
   - name: generate-ssh-keys
     taskRef:
@@ -46,7 +95,10 @@ spec:
       - 'disable-strict-host-key-checking:true'
     - name: additionalSSHKeygenOptions
       value: '-t rsa'
+
   - name: create-vm-from-manifest
+    runAfter:
+    - docker-image
     taskRef:
       kind: Task
       name: create-vm-from-manifest
@@ -84,7 +136,7 @@ spec:
                 firmware:
                   kernelBoot:
                     container:
-                      image: $(params.kernel-image)
+                      image: $(tasks.docker.results.kernel-image)
                       # ToDo: include modules in initrd.cpio
                       # initrdPath: /boot/initrd.cpio
                       kernelPath: /boot/bzImage

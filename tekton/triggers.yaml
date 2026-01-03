@@ -235,7 +235,6 @@ spec:
   - name: uuid
   - name: parent
   - name: storage
-  - name: kernel-image
   resourcetemplates:
   - apiVersion: tekton.dev/v1beta1
     kind: PipelineRun
@@ -255,11 +254,19 @@ spec:
                   operator: In
                   values: ["true"]
       timeout: "1h0m0s"
+      workspaces:
+      - name: artifacts
+        volumeClaimTemplate:
+          spec:
+            accessModes:
+            - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
       params:
       - { name: uuid,         value: $(tt.params.uuid)         }
       - { name: parent,       value: $(tt.params.parent)       }
       - { name: storage,      value: $(tt.params.storage)      }
-      - { name: kernel-image, value: $(tt.params.kernel-image) }
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
@@ -271,7 +278,6 @@ spec:
   - { name: uuid,         value: $(body.uuid)         }
   - { name: parent,       value: $(body.parent)       }
   - { name: storage,      value: $(body.storage)      }
-  - { name: kernel-image, value: $(body.kernel-image) }
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: EventListener
