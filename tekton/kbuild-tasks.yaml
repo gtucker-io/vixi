@@ -336,16 +336,23 @@ spec:
       runAsUser: 1000
     env:
     - { name: STEP,  value: $(params.step)  }
-    # ToDo: replace with Python command for better error handling
     script: |
       set -e
       . $(workspaces.artifacts.path)/global.env
       SCRIPT=$(workspaces.artifacts.path)/${STEP}/${STEP}.sh
       LOG=$(workspaces.artifacts.path)/${STEP}/${STEP}.txt
+      STATUS=$(workspaces.artifacts.path)/${STEP}.status
       TIME_PX="$(workspaces.artifacts.path)/${STEP}"
       echo -n $(date -Iseconds) > "${TIME_PX}-start-time"
-      (mkdir -p "${JOB}"; cd "${JOB}"; "${SCRIPT}" 2>&1 | tee "${LOG}")
+      mkdir -p "${JOB}"
+      (
+        set +e
+        cd "${JOB}"
+        "${SCRIPT}" 2>&1
+        echo -n $? > "${STATUS}"
+      ) | tee "${LOG}"
       echo -n $(date -Iseconds) > "${TIME_PX}-end-time"
+      [ $(cat "${STATUS}") = 0 ]
 ---
 
 apiVersion: tekton.dev/v1
@@ -368,7 +375,7 @@ spec:
   - name: sandbox
   - name: artifacts
   steps:
-  - name: upload
+  - name: result
     image: registry.gitlab.com/gtucker.io/renelick:main
     imagePullPolicy: Always
     volumeMounts:
@@ -388,3 +395,50 @@ spec:
       urls = vixi.kbuild.upload_artifacts('$(workspaces.artifacts.path)', node)
       for url in urls:
           print(url)
+---
+
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: kbuild-result
+  namespace: vixi
+spec:
+  params:
+  - name: uuid
+  - name: status
+  volumes:
+  - name: api-key
+    secret:
+      secretName: api-key
+  workspaces:
+  - name: sandbox
+  - name: artifacts
+  steps:
+  - name: summary
+    image: registry.gitlab.com/gtucker.io/renelick:main
+    imagePullPolicy: IfNotPresent
+    volumeMounts:
+    - name: api-key
+      mountPath: /home/renelick/.config/renelick
+    env:
+    - { name: PYTHONPATH,  value: $(workspaces.sandbox.path)/vixi }
+    script: |
+      #!/usr/bin/env python
+      import vixi.kbuild
+      vixi.write_string(
+          '$(workspaces.artifacts.path)/result', '$(params.status)'
+      )
+      steps = ['checkout', 'defconfig', 'image', 'modules']
+      node = vixi.kbuild.add_results('$(workspaces.artifacts.path)', steps)
+      print('  '.join((node.id, node.name)))
+
+  - name: complete
+    image: registry.gitlab.com/gtucker.io/renelick:main
+    imagePullPolicy: IfNotPresent
+    volumeMounts:
+    - name: api-key
+      mountPath: /home/renelick/.config/renelick
+    env:
+    - { name: UUID, value: $(params.uuid) }
+    script: |
+      [ -n "${UUID}" ] && renelick task complete "${UUID}"
