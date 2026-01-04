@@ -250,7 +250,7 @@ spec:
 
       cd "${TREE}"
       mkdir -p "${BDIR}"
-      make O="${BDIR}" ${OPTS} defconfig
+      make O="${BDIR}" ${OPTS} ${DEFCONFIG}
       make O="${BDIR}" ${OPTS} savedefconfig
       ln -s "\$(pwd)/${BDIR}/defconfig" "${PWD}/defconfig"
       EOF
