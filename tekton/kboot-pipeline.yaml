@@ -176,6 +176,7 @@ spec:
       steps:
       - name: summary
         image: registry.gitlab.com/gtucker.io/renelick:main
+        imagePullPolicy: Always
         volumeMounts:
         - name: api-key
           mountPath: /home/renelick/.config/renelick
@@ -265,6 +266,7 @@ spec:
       steps:
       - name: summary
         image: registry.gitlab.com/gtucker.io/renelick:main
+        imagePullPolicy: Always
         volumeMounts:
         - name: api-key
           mountPath: /home/renelick/.config/renelick

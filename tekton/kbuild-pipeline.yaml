@@ -191,7 +191,7 @@ spec:
       # flat build script and log artifacts
       - name: complete-task
         image: registry.gitlab.com/gtucker.io/renelick:main
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         volumeMounts:
         - name: api-key
           mountPath: /home/renelick/.config/renelick
