@@ -28,11 +28,11 @@ def _parse_results(api, group, root, path):
         branches.append(Tree(root=Node(
             name=test_name,
             kind='vixi.test',
+            task=root.task,
             data=Data.from_dict({
                 'path': list(path + (test_name,)),
                 'result': RESULT_MAP[test_case['status']],
             }),
-            task=root.task,
         )))
     for sub_group in group.get('sub_groups', []):
         sub_name = sub_group['name']
@@ -56,7 +56,7 @@ def parse(api, artifact_id, task):
     parent = api.node.get(artifact.parent)
     parent_data = parent.data.to_dict()
     root = Node(
-        name='kunit',
+        name='kunit-results',
         kind='vixi.group',
         parent=parent.id,
         task=task,
