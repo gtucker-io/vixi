@@ -96,6 +96,7 @@ class VixiOrchestrator(Subscriber):
                 'tree': tree,
                 'url': tree_config['url'],
                 'revision': revision,
+                'orch': 'vixi',
             }),
         ))
         tag = f"kbuild-{tree}-{revision}"
@@ -118,7 +119,7 @@ class VixiOrchestrator(Subscriber):
                 'url': tree_config['url'],
                 'revision': revision,
                 'filter': test_filter,
-                'job': 'kunit',
+                'orch': 'vixi',
                 'timeout-spec': timeout_spec,
             }),
         ))
@@ -131,8 +132,8 @@ class VixiOrchestrator(Subscriber):
         artifact = self._client.find_single_node(
             f'task.id={task_id}', 'kind=artifact-v1', 'name=kunit.json'
         )
-        # ToDo: add syntax to match with attributes in oconfig.yaml directly
-        if artifact.task.attributes.to_dict().get('job') != 'kunit':
+        # ToDo: rework with app namespaces etc. as a built-in Renelick feature
+        if artifact.task.attributes.to_dict().get('orch') != 'vixi':
             return
         timeout_spec = {'minutes': 15}
         task = self._api.task.schedule(Task(
@@ -140,7 +141,7 @@ class VixiOrchestrator(Subscriber):
             scheduler=scheduler,
             timeout=datetime.now() + timedelta(**timeout_spec),
             attributes=TaskAttributes.from_dict({
-                'job': 'kunit',
+                'orch': 'vixi',
                 'input-nodes': {
                     'artifact': {
                         'id': artifact.id,
@@ -164,7 +165,7 @@ class VixiOrchestrator(Subscriber):
 
     async def _run_delta(self, event, scheduler):
         parent = self._api.node.get(event['id'])
-        if parent.task.attributes.to_dict().get('job') != 'kunit':
+        if parent.task.attributes.to_dict().get('orch') != 'vixi':
             return
         data = parent.data.to_dict()
         task = self._api.task.schedule(Task(
@@ -173,6 +174,7 @@ class VixiOrchestrator(Subscriber):
             timeout=datetime.now() + timedelta(minutes=30),
             attributes=TaskAttributes.from_dict({
                 'parent': parent.id,
+                'orch': 'vixi',
             }),
         ))
         tag = '-'.join([
@@ -193,6 +195,7 @@ class VixiOrchestrator(Subscriber):
             timeout=datetime.now() + timedelta(minutes=180),
             attributes=TaskAttributes.from_dict({
                 'delta': delta.id,
+                'orch': 'vixi',
             }),
         ))
         revision = data['new']['revision']
@@ -220,6 +223,7 @@ class VixiOrchestrator(Subscriber):
             timeout=datetime.now() + timedelta(minutes=15),
             attributes=TaskAttributes.from_dict({
                 'parent': bzImage.id,
+                'orch': 'vixi',
             }),
         ))
         tag = '-'.join((

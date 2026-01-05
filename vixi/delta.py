@@ -105,7 +105,7 @@ class Delta:
 
     def _make_base(self, base_sha1):
         replay = self._client.replay_tasks(
-            self._res.root, {'job': 'delta', 'revision': base_sha1}
+            self._res.root, {'orch': 'delta', 'revision': base_sha1}
         )
         return self._client.find_single_node(
             'kind=vixi.group',

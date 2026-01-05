@@ -76,7 +76,7 @@ class Bisection:
     def _test(self, revision):
         replay = self._client.replay_tasks(
             self._new_node, {
-                'job': 'bisect',
+                'orch': 'bisect',
                 'tree': revision['tree'],
                 'url': revision['url'],
                 'revision': revision['sha1'],
