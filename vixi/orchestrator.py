@@ -83,23 +83,6 @@ class VixiOrchestrator(Subscriber):
         node = self._api.node.get(event['id'])
         self.load_oconfig(node)
 
-    async def _run_kbuild_mirror(self, event, scheduler):
-        tree = event['tree']
-        tree_config = self._oconfig['trees'].get(tree)
-        if tree_config is None:
-            raise RenelickError(f"Unknown tree: {tree}")
-        task = self._api.task.schedule(Task(
-            name='kbuild-mirror',
-            scheduler=scheduler,
-            timeout=datetime.now() + timedelta(minutes=30),
-            attributes=TaskAttributes.from_dict({
-                'tree': tree,
-                'url': tree_config['url'],
-            }),
-        ))
-        tag = f"kbuild-mirror-{tree}"
-        self.log.info(f"{tag:48s}  {task.id}")
-
     async def _run_kbuild(self, event, scheduler):
         tree, revision = (event[key] for key in ['tree', 'revision'])
         tree_config = self._oconfig['trees'].get(tree)

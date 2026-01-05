@@ -20,13 +20,6 @@ switchboard:
   match: {kind: vixi.oconfig, op: add}
   scheduler: null
 
-  # update a Git mirror
-- task: kbuild-mirror
-  channel: vixi
-  match: {event: mirror}
-  params: [tree]
-  scheduler: tekton
-
   # build a kernel in Tekton
 - task: kbuild
   channel: vixi
