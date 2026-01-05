@@ -12,6 +12,7 @@ from renelick.client import (
     Client,
     NewNode as Node,
     NewNodeData as Data,
+    NewTree as Tree,
 )
 from .base import sh, shx, read_string, iter_files, rk_storage
 
@@ -155,8 +156,9 @@ def add_result_node(base):
     """Add a database result node for a kbuild step"""
     opt, params = _load_opt(base)
     revision = _gather_revision(opt)
-    uuid, job = (opt.get(key) for key in ('UUID', 'JOB'))
-    time_px = os.path.join(base, opt['STEP'])
+    uuid, job, step = (opt.get(key) for key in ('UUID', 'JOB', 'STEP'))
+    time_px = os.path.join(base, step)
+    status = int(read_string(os.path.join(base, '.'.join((step, 'status')))))
     rk = Client().api
     return rk.node.add(Node(
         name=':'.join(opt[key] for key in ('TREE', 'DESCRIBE', 'STEP')),
@@ -164,13 +166,73 @@ def add_result_node(base):
         parent=opt.get('PARENT') or None,
         task=rk.task.get(uuid) if uuid else None,
         data=Data.from_dict({
-            'step': opt['STEP'],
+            'step': step,
             'start-time': read_string(f'{time_px}-start-time'),
             'end-time': read_string(f'{time_px}-end-time'),
+            'status': status,
             'revision': revision,
             'params': params,
         }),
     ))
+
+
+def add_results(base, steps):
+    """Add a database vixi.group tree for a kbuild pipeline"""
+    uuid = _load_env(base, 'global.env').get('UUID')
+    if not uuid:
+        print("WARNING - no task UUID defined, not adding summary node")
+        return None
+
+    results = []
+    for step in steps:
+        step_path = os.path.join(base, '.'.join((step, 'status')))
+        if os.path.exists(step_path):
+            step_status = int(read_string(step_path))
+            step_result = 'pass' if step_status == 0 else 'fail'
+        else:
+            step_status = None
+            step_result = 'skip'
+        results.append((step, step_status, step_result))
+    complete = list(step for (step, stat, _) in results if stat is not None)
+    if not any(complete):
+        print("WARNING - no step node found, not adding summary node")
+        return None
+
+    rk = Client().api
+    parent = rk.node.find([
+        'kind=vixi.kbuild.step', f'task.id={uuid}', f'data.step={complete[-1]}'
+    ], limit=1)[0]
+    data = parent.data.to_dict()
+    steps = [
+        Tree(root=Node(
+            name=name,
+            kind='vixi.test',
+            task=parent.task,
+            data=Data.from_dict({
+                'path': ['kbuild', name],
+                'result': result,
+            }),
+        )) for name, stat, result in results
+    ]
+    tree = Tree(
+        root=Node(
+            name='kbuild',
+            kind='vixi.group',
+            parent=parent.id,
+            task=parent.task,
+            data=Data.from_dict({
+                'revision': data.get('revision'),
+                'params': data.get('params'),
+                'result': (
+                    'pass'
+                    if read_string(os.path.join(base, 'result')) == 'Succeeded'
+                    else 'fail'
+                )
+            })
+        ),
+        branches=steps,
+    )
+    return rk.node.add_batch([tree])[0]
 
 
 def upload_artifacts(base, parent):
