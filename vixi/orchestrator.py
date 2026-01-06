@@ -88,15 +88,17 @@ class VixiOrchestrator(Subscriber):
         tree_config = self._oconfig['trees'].get(tree)
         if tree_config is None:
             raise RenelickError(f"Unknown tree: {tree}")
+        timeout_spec = {'minutes': 90}
         task = self._api.task.schedule(Task(
             name='kbuild',
             scheduler=scheduler,
-            timeout=datetime.now() + timedelta(minutes=90),
+            timeout=datetime.now() + timedelta(**timeout_spec),
             attributes=TaskAttributes.from_dict({
                 'tree': tree,
                 'url': tree_config['url'],
                 'revision': revision,
                 'orch': 'vixi',
+                'timeout-spec': timeout_spec,
             }),
         ))
         tag = f"kbuild-{tree}-{revision}"
@@ -216,6 +218,8 @@ class VixiOrchestrator(Subscriber):
             f'task.id={task_id}', 'kind=artifact-v1', 'name=bzImage'
         )
         node = self._client.api.node.get(bzImage.parent)
+        if node.task.attributes.to_dict().get('orch') != 'vixi':
+            return
         data = node.data.to_dict()
         task = self._api.task.schedule(Task(
             name='kboot',
