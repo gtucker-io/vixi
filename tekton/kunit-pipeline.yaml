@@ -207,79 +207,35 @@ spec:
     params:
     - { name: step,        value: checkout                                  }
     - { name: image,       value: alpine/git:v2.49.1                        }
-  - &result-task
-    name: checkout-result
-    runAfter:
-    - checkout
-    taskRef:
-      name: step-result
-    workspaces:
-    - name: sandbox
-    - name: artifacts
-    params:
-    - { name: step,        value: checkout                                  }
+    - { name: parent,      value: ''                                        }
 
   # ---------------------------------------------------------------------------
   # build
   #
-  - &step-task
+  - <<: *step-task
     name: build
     runAfter:
     - checkout
-    taskRef:
-      name: step-run
-    workspaces:
-    - name: sandbox
-    - name: artifacts
     params:
+    - &ccimage
+      name: image
+      value: $(params.registry)$(params.cc):$(params.ccver)-x86$(params.ccarch)-kunit
     - name: step
       value: build
-    - name: image
-      value: $(params.registry)$(params.cc):$(params.ccver)-x86$(params.ccarch)-kunit
-  - &result-task
-    name: build-result
-    runAfter:
-    - build
-    - checkout-result
-    taskRef:
-      name: step-result
-    workspaces:
-    - name: sandbox
-    - name: artifacts
-    params:
-    - { name: step,        value: build                                     }
-    - { name: parent,      value: $(tasks.checkout-result.results.node-id)  }
+    - name: parent
+      value: $(tasks.checkout.results.node-id)
 
   # ---------------------------------------------------------------------------
   # exec
   #
-  - &step-task
+  - <<: *step-task
     name: exec
     runAfter:
     - build
-    taskRef:
-      name: step-run
-    workspaces:
-    - name: sandbox
-    - name: artifacts
     params:
-    - name: step
-      value: exec
-    - name: image
-      value: $(params.registry)$(params.cc):$(params.ccver)-x86$(params.ccarch)-kunit
-  - &result-task
-    name: exec-result
-    runAfter:
-    - exec
-    - build-result
-    taskRef:
-      name: step-result
-    workspaces:
-    - name: sandbox
-    - name: artifacts
-    params:
+    - <<: *ccimage
     - { name: step,        value: exec                                      }
-    - { name: parent,      value: $(tasks.build-result.results.node-id)     }
+    - { name: parent,      value: $(tasks.build.results.node-id)            }
 
   # ---------------------------------------------------------------------------
   # cleanup
