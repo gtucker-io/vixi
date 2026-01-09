@@ -80,17 +80,7 @@ spec:
     params:
     - { name: step,        value: checkout                                  }
     - { name: image,       value: alpine/git:v2.49.1                        }
-  - &result-task
-    name: checkout-result
-    runAfter:
-    - checkout
-    taskRef:
-      name: step-result
-    workspaces:
-    - name: sandbox
-    - name: artifacts
-    params:
-    - { name: step,        value: checkout                                  }
+    - { name: parent,      value: ''                                        }
 
   # ToDo: group defconfig + image (+ dts) + modules in a single task with
   # several steps and keep the root node as the parent for each step?  Lineage
@@ -110,14 +100,8 @@ spec:
       value: $(params.registry)$(params.cc):$(params.ccver)-x86$(params.ccarch)
     - name: step
       value: defconfig
-  - <<: *result-task
-    name: defconfig-result
-    runAfter:
-    - defconfig
-    - checkout-result
-    params:
-    - { name: step,        value: defconfig                                 }
-    - { name: parent,      value: $(tasks.checkout-result.results.node-id)  }
+    - name: parent
+      value: $(tasks.checkout.results.node-id)
 
   # ---------------------------------------------------------------------------
   # image
@@ -128,15 +112,8 @@ spec:
     - defconfig
     params:
     - <<: *ccimage
-    - { name: step, value: image }
-  - <<: *result-task
-    name: image-result
-    runAfter:
-    - image
-    - defconfig-result
-    params:
     - { name: step,        value: image                                     }
-    - { name: parent,      value: $(tasks.defconfig-result.results.node-id) }
+    - { name: parent,      value: $(tasks.defconfig.results.node-id)        }
 
   # ---------------------------------------------------------------------------
   # modules
@@ -147,15 +124,8 @@ spec:
     - image
     params:
     - <<: *ccimage
-    - { name: step, value: modules }
-  - <<: *result-task
-    name: modules-result
-    runAfter:
-    - modules
-    - image-result
-    params:
     - { name: step,        value: modules                                   }
-    - { name: parent,      value: $(tasks.image-result.results.node-id)     }
+    - { name: parent,      value: $(tasks.image.results.node-id)            }
 
   # ---------------------------------------------------------------------------
   # cleanup

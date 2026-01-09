@@ -324,9 +324,18 @@ spec:
   params:
   - name: step
   - name: image
+  - name: parent
+  results:
+  - name: node-id
+    description: Id of the database node with the task's result
+  volumes:
+  - name: api-key
+    secret:
+      secretName: api-key
   workspaces:
   - name: sandbox
   - name: artifacts
+
   steps:
   - name: script
     image: $(params.image)
@@ -352,29 +361,7 @@ spec:
         echo -n $? > "${STATUS}"
       ) | tee "${LOG}"
       echo -n $(date -Iseconds) > "${TIME_PX}-end-time"
-      [ $(cat "${STATUS}") = 0 ]
----
 
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: step-result
-  namespace: vixi
-spec:
-  params:
-  -   name: step
-  - { name: parent, default: '' }
-  results:
-  - name: node-id
-    description: Id of the database node with the task's result
-  volumes:
-  - name: api-key
-    secret:
-      secretName: api-key
-  workspaces:
-  - name: sandbox
-  - name: artifacts
-  steps:
   - name: result
     image: registry.gitlab.com/gtucker.io/renelick:main
     imagePullPolicy: Always
@@ -388,6 +375,7 @@ spec:
     - { name: PYTHONPATH,  value: $(workspaces.sandbox.path)/vixi }
     script: |
       #!/usr/bin/env python
+      import sys
       import vixi.kbuild
       node = vixi.kbuild.add_result_node('$(workspaces.artifacts.path)')
       vixi.write_string('$(results.node-id.path)', node.id)
@@ -395,6 +383,7 @@ spec:
       urls = vixi.kbuild.upload_artifacts('$(workspaces.artifacts.path)', node)
       for url in urls:
           print(url)
+      sys.exit(node.data.to_dict()['status'])
 ---
 
 apiVersion: tekton.dev/v1
