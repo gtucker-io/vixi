@@ -50,7 +50,9 @@ class Results:
         self.failed = {
             tuple(fail.data.to_dict()['path']): fail
             for fail in api.node.find([
-                f'task.id={self.root.task.id}', 'data.result=fail'
+                'kind=vixi.test',
+                f'task.id={self.root.task.id}',
+                'data.result=fail'
             ])
         }
         self.names = set(self.failed.keys())
