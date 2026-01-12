@@ -1,0 +1,110 @@
+{
+  "id": "69652f2967ff704f772f9115",
+  "name": "bisect:76819e0f306e1d1682ffcdeba5cd408c0eeb85c5",
+  "lineage": [
+    "69652d0967ff704f772f8ce2",
+    "69652d6767ff704f772f8cec",
+    "69652dbd67ff704f772f8cfe",
+    "69652dc867ff704f772f8d02",
+    "69652dc967ff704f772f8f49",
+    "69652dc967ff704f772f8f56",
+    "69652dcd67ff704f772f9080",
+    "69652f2967ff704f772f9115"
+  ],
+  "path": [
+    "gtucker:v6.19-rc3-4-gb1d2fdbfdf5f:checkout",
+    "gtucker:v6.19-rc3-4-gb1d2fdbfdf5f:build",
+    "gtucker:v6.19-rc3-4-gb1d2fdbfdf5f:exec",
+    "kunit",
+    "overflow",
+    "shift_sane_test",
+    "shift_sane_test:break",
+    "bisect:76819e0f306e1d1682ffcdeba5cd408c0eeb85c5"
+  ],
+  "created": "2026-01-12T17:28:09.903000",
+  "owner": {
+    "email": "vixi@renelick.org",
+    "username": "vixi",
+    "full_name": "VIXI Service Account"
+  },
+  "parent": "69652dcd67ff704f772f9080",
+  "kind": "vixi.bisect",
+  "data": {
+    "root": "kunit",
+    "path": [
+      "overflow",
+      "shift_sane_test"
+    ],
+    "params": {
+      "arch": "x86_64",
+      "defconfig": "defconfig",
+      "opts": "",
+      "cc": "gcc",
+      "ccver": "15.2",
+      "ccarch": "-x86"
+    },
+    "revision": {
+      "sha1": "76819e0f306e1d1682ffcdeba5cd408c0eeb85c5",
+      "describe": "v6.19-rc3-2-g76819e0f306e",
+      "subject": "HACK fail KUnit overflow.shift_sane_test",
+      "tree": "gtucker",
+      "url": "https://gitlab.com/gtucker/linux.git"
+    },
+    "history": [
+      {
+        "id": "69652dc967ff704f772f8f56",
+        "result": "bad",
+        "revision": {
+          "sha1": "b1d2fdbfdf5f9d869bea4714c3e00c5cb3faea38",
+          "describe": "v6.19-rc3-4-gb1d2fdbfdf5f",
+          "subject": "HACK BISECT 4.noop",
+          "tree": "gtucker",
+          "url": "https://gitlab.com/gtucker/linux.git"
+        }
+      },
+      {
+        "id": "6961230874fc05af70c6113e",
+        "result": "good",
+        "revision": {
+          "sha1": "f8f9c1f4d0c7a64600e2ca312dec824a0bc2f1da",
+          "describe": "v6.19-rc3",
+          "subject": "Linux 6.19-rc3",
+          "tree": "gtucker",
+          "url": "https://gitlab.com/gtucker/linux.git"
+        }
+      },
+      {
+        "id": "69652ed267ff704f772f90e7",
+        "result": "bad",
+        "revision": {
+          "sha1": "76819e0f306e1d1682ffcdeba5cd408c0eeb85c5",
+          "describe": "v6.19-rc3-2-g76819e0f306e",
+          "subject": "HACK fail KUnit overflow.shift_sane_test",
+          "tree": "gtucker",
+          "url": "https://gitlab.com/gtucker/linux.git"
+        }
+      },
+      {
+        "id": "69652f2867ff704f772f910b",
+        "result": "good",
+        "revision": {
+          "sha1": "71746a491c0f6557d43047dc9eca5f0a5613f37c",
+          "describe": "v6.19-rc3-1-g71746a491c0f",
+          "subject": "HACK BISECT 1.noop",
+          "tree": "gtucker",
+          "url": "https://gitlab.com/gtucker/linux.git"
+        }
+      }
+    ]
+  },
+  "task": {
+    "name": "bisect",
+    "attributes": {
+      "delta": "69652dcd67ff704f772f9080",
+      "orch": "vixi"
+    },
+    "scheduler": "inline-vixi",
+    "id": "0c8ab94d-290f-48be-8090-683c0da56c5d",
+    "timeout": "2026-01-12T20:23:43.498000"
+  }
+}

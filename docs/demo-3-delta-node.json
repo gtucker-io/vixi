@@ -1,0 +1,86 @@
+{
+  "id": "69652dcd67ff704f772f9080",
+  "name": "shift_sane_test:break",
+  "lineage": [
+    "69652d0967ff704f772f8ce2",
+    "69652d6767ff704f772f8cec",
+    "69652dbd67ff704f772f8cfe",
+    "69652dc867ff704f772f8d02",
+    "69652dc967ff704f772f8f49",
+    "69652dc967ff704f772f8f56",
+    "69652dcd67ff704f772f9080"
+  ],
+  "path": [
+    "gtucker:v6.19-rc3-4-gb1d2fdbfdf5f:checkout",
+    "gtucker:v6.19-rc3-4-gb1d2fdbfdf5f:build",
+    "gtucker:v6.19-rc3-4-gb1d2fdbfdf5f:exec",
+    "kunit",
+    "overflow",
+    "shift_sane_test",
+    "shift_sane_test:break"
+  ],
+  "created": "2026-01-12T17:22:21.819000",
+  "owner": {
+    "email": "vixi@renelick.org",
+    "username": "vixi",
+    "full_name": "VIXI Service Account"
+  },
+  "parent": "69652dc967ff704f772f8f56",
+  "kind": "vixi.delta",
+  "data": {
+    "category": "break",
+    "root": "kunit",
+    "path": [
+      "overflow",
+      "shift_sane_test"
+    ],
+    "old": {
+      "id": "6961230874fc05af70c6113e",
+      "revision": {
+        "sha1": "f8f9c1f4d0c7a64600e2ca312dec824a0bc2f1da",
+        "describe": "v6.19-rc3",
+        "subject": "Linux 6.19-rc3",
+        "tree": "gtucker",
+        "url": "https://gitlab.com/gtucker/linux.git"
+      },
+      "params": {
+        "arch": "x86_64",
+        "defconfig": "defconfig",
+        "opts": "",
+        "cc": "gcc",
+        "ccver": "15.2",
+        "ccarch": "-x86"
+      },
+      "result": "pass"
+    },
+    "new": {
+      "id": "69652dc967ff704f772f8f56",
+      "revision": {
+        "sha1": "b1d2fdbfdf5f9d869bea4714c3e00c5cb3faea38",
+        "describe": "v6.19-rc3-4-gb1d2fdbfdf5f",
+        "subject": "HACK BISECT 4.noop",
+        "tree": "gtucker",
+        "url": "https://gitlab.com/gtucker/linux.git"
+      },
+      "params": {
+        "arch": "x86_64",
+        "defconfig": "defconfig",
+        "opts": "",
+        "cc": "gcc",
+        "ccver": "15.2",
+        "ccarch": "-x86"
+      },
+      "result": "fail"
+    }
+  },
+  "task": {
+    "name": "delta",
+    "attributes": {
+      "parent": "69652dc867ff704f772f8d02",
+      "orch": "vixi"
+    },
+    "scheduler": "inline-vixi",
+    "id": "72e89f23-7f09-4cca-835f-11bb96ee3f68",
+    "timeout": "2026-01-12T17:53:40.192000"
+  }
+}

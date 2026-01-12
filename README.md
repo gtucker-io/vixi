@@ -268,3 +268,4 @@ A number of demos are provided to showcase how this all fits together:
 
 1. [From Git to KUnit](/docs/demo-1-git-to-kunit.md)
 1. [Delta and Git bisect](/docs/demo-2-delta-and-git-bisect.md)
+1. [Automated replay](/docs/demo-3-automated-replay.md)

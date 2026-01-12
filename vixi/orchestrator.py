@@ -154,6 +154,7 @@ class VixiOrchestrator(Subscriber):
                 'timeout-spec': timeout_spec,
             }),
         ))
+
         parent = self._api.node.get(artifact.parent)
         data = parent.data.to_dict()
         tag = '-'.join([
