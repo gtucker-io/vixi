@@ -34,8 +34,10 @@ class InlineVIXI(Runtime):
         )
         if not func:
             self.log.warning(f"No method found for task: {task.name}")
+            self._api.task.abort(task.id)
         else:
             self.log.info('  '.join([str(task.id), task.name]))
+            self._api.task.ack(task.id)
             func(task)
 
     def _run_kunit_parser(self, task: Task):
