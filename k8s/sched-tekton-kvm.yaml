@@ -30,6 +30,9 @@ spec:
       - name: api-key
         secret:
           secretName: api-key
+      - name: sandbox
+        persistentVolumeClaim:
+          claimName: sandbox
       containers:
       - name: scheduler
         image: registry.gitlab.com/gtucker.io/renelick:main
@@ -37,4 +40,9 @@ spec:
         volumeMounts:
         - name: api-key
           mountPath: /home/renelick/.config/renelick
-        command: ['renelick', 'service', 'scheduler', '--runtime=tekton-kvm']
+        - name: sandbox
+          mountPath: /workspace/sandbox
+        env:
+        - name: PYTHONPATH
+          value: /workspace/sandbox/vixi
+        command: ['/usr/bin/env', 'python', '-m', 'vixi.tekton']
