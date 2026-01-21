@@ -16,8 +16,10 @@ spec:
   - name: privateKeySecretName
     default: $(context.pipelineRun.name)-private-key
   - name: uuid
-  - name: parent
   - name: storage
+  - name: kbuild-node-id
+  - name: image-node-id
+  - name: modules-node-id
   results:
   - name: node-id
     value: $(tasks.summary.results.node-id)
@@ -25,9 +27,8 @@ spec:
   workspaces:
   - name: artifacts
   tasks:
-    # ToDo: Download parent node and get kernel Docker image name from it as
-    # well as revision, build metadata etc. to populate an environment file in
-    # the shared volume like for the kbuild pipeline.
+    # ToDo: Get revision, build metadata etc. from kbuild node to populate an
+    # environment file in the shared volume and include in results.
     #
     # ToDo: Upload artifacts with path prefix e.g.:
     # ${TREE}/${BRANCH}/${DESCRIBE}/${ARCH}
@@ -59,10 +60,10 @@ spec:
         - name: api-key
           mountPath: /home/renelick/.config/renelick
         env:
-        - { name: PARENT,  value: $(params.parent)  }
+        - { name: IMAGE_ID,  value: $(params.image-node-id)  }
         script: |
           # ToDo: use summary parent node and download modules.tar.gz too
-          renelick storage get "${PARENT}"
+          renelick storage get "${IMAGE_ID}"
           ls -l
 
       - name: images
@@ -74,6 +75,8 @@ spec:
         env:
         - { name: UUID,    value: $(params.uuid)    }
         script: |
+          #!/usr/bin/env ash
+          set -eo pipefail
           tag="kernel-image:${UUID}"
           echo "FROM scratch" > Dockerfile
           echo "ADD --chown=107:107 bzImage boot/bzImage" >> Dockerfile
@@ -238,10 +241,13 @@ spec:
           privileged: True
           runAsUser: 0
         env:
-        - { name: UUID,    value: $(params.uuid)    }
-        - { name: PARENT,  value: $(params.parent)  }
-        - { name: STORAGE, value: $(params.storage) }
+        - { name: UUID,      value: $(params.uuid)           }
+        - { name: PARENT,    value: $(params.kbuild-node-id) }
+        - { name: STORAGE,   value: $(params.storage)        }
         script: |
+          #!/usr/bin/env bash
+          set -eo pipefail
+
           [ -z "${PARENT}" ] && {
               echo "ERROR - no parent node defined"
               exit 1

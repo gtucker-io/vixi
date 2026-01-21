@@ -233,8 +233,10 @@ metadata:
 spec:
   params:
   - name: uuid
-  - name: parent
   - name: storage
+  - name: kbuild-node-id
+  - name: image-node-id
+  - name: modules-node-id
   resourcetemplates:
   - apiVersion: tekton.dev/v1beta1
     kind: PipelineRun
@@ -264,9 +266,11 @@ spec:
               requests:
                 storage: 1Gi
       params:
-      - { name: uuid,         value: $(tt.params.uuid)         }
-      - { name: parent,       value: $(tt.params.parent)       }
-      - { name: storage,      value: $(tt.params.storage)      }
+      - { name: uuid,                value: $(tt.params.uuid)                }
+      - { name: storage,             value: $(tt.params.storage)             }
+      - { name: kbuild-node-id,      value: $(tt.params.kbuild-node-id)      }
+      - { name: image-node-id,       value: $(tt.params.image-node-id)       }
+      - { name: modules-node-id,     value: $(tt.params.modules-node-id)     }
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
@@ -275,9 +279,11 @@ metadata:
   namespace: vixi
 spec:
   params:
-  - { name: uuid,         value: $(body.uuid)         }
-  - { name: parent,       value: $(body.parent)       }
-  - { name: storage,      value: $(body.storage)      }
+  - { name: uuid,                  value: $(body.uuid)                  }
+  - { name: storage,               value: $(body.storage)               }
+  - { name: kbuild-node-id,        value: $(body.kbuild-node-id)        }
+  - { name: image-node-id,         value: $(body.image-node-id)         }
+  - { name: modules-node-id,       value: $(body.modules-node-id)       }
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: EventListener
