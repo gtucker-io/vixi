@@ -6,7 +6,7 @@
 
 import tempfile
 
-from renelick.client import Client, Task, SimpleScheduler
+from renelick.client import Task, SimpleScheduler
 from renelick.client.runtime import Runtime, Config as RuntimeConfig
 import vixi.bisect
 import vixi.delta
@@ -40,32 +40,28 @@ class InlineVIXI(Runtime):
         else:
             self.log.info('  '.join([str(task.id), task.name]))
             self._api.task.ack(task.id)
-            func(task)
+            attrs = task.attributes.to_dict()
+            func(task, attrs)
+            self._api.task.complete(task.id)
 
-    def _run_kunit_parser(self, task: Task):
-        attrs = task.attributes.to_dict()
+    def _run_kunit_parser(self, task, attrs):
         vixi.kunit.parse(
             self._api, attrs['input-nodes']['artifact']['id'], task
         )
-        self._api.task.complete(task.id)
 
-    def _run_delta(self, task: Task):
-        attrs = task.attributes.to_dict()
+    def _run_delta(self, task, attrs):
         vixi.delta.Delta(
             self._client, attrs['parent'], task
         ).run(
             self._sandbox, self.MIRROR,
         )
-        self._api.task.complete(task.id)
 
-    def _run_bisect(self, task: Task):
-        attrs = task.attributes.to_dict()
+    def _run_bisect(self, task, attrs):
         vixi.bisect.Bisection(
             self._client, attrs['delta'], task
         ).run(
             self._sandbox, self.MIRROR,
         )
-        self._api.task.complete(task.id)
 
 
 if __name__ == '__main__':
