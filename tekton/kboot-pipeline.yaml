@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 #
-# Copyright (C) 2024, 2025 Guillaume Tucker
+# Copyright (C) 2024-2026 Guillaume Tucker
 
 apiVersion: tekton.dev/v1
 kind: Pipeline
@@ -20,19 +20,9 @@ spec:
   - name: kbuild-node-id
   - name: image-node-id
   - name: modules-node-id
-  results:
-  - name: node-id
-    value: $(tasks.summary.results.node-id)
-    description: Id of the boot summary node in the database
   workspaces:
   - name: artifacts
   tasks:
-    # ToDo: Get revision, build metadata etc. from kbuild node to populate an
-    # environment file in the shared volume and include in results.
-    #
-    # ToDo: Upload artifacts with path prefix e.g.:
-    # ${TREE}/${BRANCH}/${DESCRIBE}/${ARCH}
-
   - name: docker
     taskSpec:
       results:
@@ -47,9 +37,6 @@ spec:
       - name: api-key
         secret:
           secretName: api-key
-      - name: kboot
-        persistentVolumeClaim:
-          claimName: kboot
 
       steps:
       - name: artifacts
@@ -189,6 +176,7 @@ spec:
       name: execute-in-vm
     runAfter:
     - create-vm-from-manifest
+    timeout: 5m
     params:
     - name: vmName
       value: "$(params.vmName)"
@@ -210,17 +198,17 @@ spec:
         cat /proc/meminfo > "${ARTIFACTS}/meminfo.txt"
         echo '{
           "system": "'"$(uname -a)"'",
-          "nproc": "'"$(nproc)"'"
+          "nproc": "'"$(nproc)"'",
+          "result": "pass"
         }' > "${ARTIFACTS}/metadata.json"
 
         sudo umount /mnt/kboot
 
+  finally:
   - name: summary
-    runAfter:
-    - payload
+    params:
+    - { name: status,      value: $(tasks.status)                           }
     taskSpec:
-      results:
-      - name: node-id
       volumes:
       - name: api-key
         secret:
@@ -228,6 +216,11 @@ spec:
       - name: kboot
         persistentVolumeClaim:
           claimName: kboot
+      - name: sandbox
+        persistentVolumeClaim:
+          claimName: sandbox
+      params:
+      - name: status
       steps:
       - name: summary
         image: registry.gitlab.com/gtucker.io/renelick:main
@@ -237,101 +230,32 @@ spec:
           mountPath: /home/renelick/.config/renelick
         - name: kboot
           mountPath: /home/renelick/kboot
+        - name: sandbox
+          mountPath: /home/renelick/sandbox
         securityContext:
           privileged: True
           runAsUser: 0
         env:
-        - { name: UUID,      value: $(params.uuid)           }
-        - { name: PARENT,    value: $(params.kbuild-node-id) }
-        - { name: STORAGE,   value: $(params.storage)        }
+        - { name: STATUS,     value: $(params.status)            }
+        - { name: UUID,       value: $(params.uuid)              }
+        - { name: PARENT,     value: $(params.kbuild-node-id)    }
+        - { name: STORAGE,    value: $(params.storage)           }
+        - { name: PYTHONPATH, value: /home/renelick/sandbox/vixi }
         script: |
           #!/usr/bin/env bash
-          set -eo pipefail
 
-          [ -z "${PARENT}" ] && {
-              echo "ERROR - no parent node defined"
-              exit 1
-          }
           [ -e /dev/loop0 ] || mknod /dev/loop0 b 7 0
           loopdev=$(losetup --find --show kboot/disk.img)
           mkdir -p /tmp/kboot-disk
           mount kboot/disk.img /tmp/kboot-disk
           export ARTIFACTS="/tmp/kboot-disk/$(context.pipelineRun.uid)"
 
-          [ -z "${STORAGE}" ] && {
-              echo "WARNING - no storage defined, artifacts will not be saved"
-              exit 0
-          }
-
-          [ -d "${ARTIFACTS}" ] && {
-              cd "${ARTIFACTS}"
-              [ -n "${UUID}" ] && {
-                  su renelick bash -c 'renelick task get "${UUID}" > task.json'
-              } && {
-                  export TOPT="task__json=task.json"
-              } || {
-                  echo "WARNING - failed to get task from UUID"
-              }
-              su renelick bash -c '\
-                  renelick task get "${UUID}" > task.json; \
-                  renelick node make \
-                      name="kboot" \
-                      kind="vixi.kboot" \
-                      parent="${PARENT}" \
-                      ${TOPT} \
-                      data__json=metadata.json \
-                  | renelick node add - | tee $(results.node-id.path); \
-              '
-              export POPT="parent=$(cat $(results.node-id.path) | tr -d \n)"
-              [ -n "${STORAGE}" ] && [ -n "${TOPT}" ] && {
-                  find . -type f -not -name "*.json" | while read path; do
-                      export FILE="$(basename ${path})"
-                      echo "Uploading ${FILE}"
-                      export URL=$(su renelick bash -c '\
-                          renelick storage upload "${FILE}" \
-                          --storage="${STORAGE}" \
-                          --dest="kboot-${UUID}" \
-                      ')
-                      echo "URL ${URL}"
-                      su renelick bash -c '\
-                          renelick node make \
-                              name="${FILE}" \
-                              kind="artifact-v1" \
-                              ${POPT} \
-                              ${TOPT} \
-                              data.url="${URL}" \
-                              data.storage="ssh" \
-                          | renelick node add -; \
-                      '
-                  done
-              } || {
-                  echo "WARNING - not saving artifacts"
-              }
-              cd "${HOME}"
-              rm -rf "${ARTIFACTS}"
-          }
+          su renelick bash -c \
+              'python -c "import vixi.kboot; vixi.kboot.summary()"'
 
           umount /tmp/kboot-disk
           losetup --detach "${loopdev}"
-
-  finally:
-  - name: complete
-    taskSpec:
-      volumes:
-      - name: api-key
-        secret:
-          secretName: api-key
-      steps:
-      - name: summary
-        image: registry.gitlab.com/gtucker.io/renelick:main
-        imagePullPolicy: Always
-        volumeMounts:
-        - name: api-key
-          mountPath: /home/renelick/.config/renelick
-        env:
-        - { name: UUID,    value: $(params.uuid)    }
-        script: |
-          [ -n "${UUID}" ] && renelick task complete "${UUID}"
+          su renelick bash -c 'python -c "import vixi; vixi.complete()"'
 
   - name: cleanup
     taskRef:
@@ -348,6 +272,5 @@ spec:
       value: "5m"
     - name: script
       value: |
-        # ToDo: add status to summary node
         echo "Result $(tasks.payload.status)"
         echo "Tasks $(tasks.status)"
