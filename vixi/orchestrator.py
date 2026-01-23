@@ -213,22 +213,49 @@ class VixiOrchestrator(Subscriber):
         self.log.info(f"{tag:48s}  {task.id}")
 
     async def _run_kboot(self, event, scheduler):
-        task_id = event['id']
-        # Explicitly get the bzImage until a kbuild summary node can be used
-        bzImage = self._client.find_single_node(
+        kbuild = self._api.node.get(event['id'])
+        if kbuild.task.attributes.to_dict().get('orch') != 'vixi':
+            return
+        data = kbuild.data.to_dict()
+        if data['result'] != 'pass':
+            return
+        task_id = str(kbuild.task.id)
+        # ToDo: include references to artifact nodes in kbuild data?
+        #
+        # This would help decouple the data from the tasks.  It's a compromise
+        # to be found between schema design and query efficiency i.e. getting
+        # all artifacts in one 'node find' would be ideal.
+        image = self._client.find_single_node(
             f'task.id={task_id}', 'kind=artifact-v1', 'name=bzImage'
         )
-        node = self._client.api.node.get(bzImage.parent)
-        if node.task.attributes.to_dict().get('orch') != 'vixi':
-            return
-        data = node.data.to_dict()
+        modules = self._client.find_single_node(
+            f'task.id={task_id}', 'kind=artifact-v1', 'name=modules.tar.gz'
+        )
+        timeout_spec = {'minutes': 15}
         task = self._api.task.schedule(Task(
             name='kboot',
             scheduler=scheduler,
-            timeout=datetime.now() + timedelta(minutes=15),
+            timeout=datetime.now() + timedelta(**timeout_spec),
             attributes=TaskAttributes.from_dict({
-                'parent': bzImage.id,
                 'orch': 'vixi',
+                'input-nodes': {
+                    'kbuild': {
+                        'id': kbuild.id,
+                        'kind': 'vixi.group',
+                        'name': 'kbuild',
+                    },
+                    'image': {
+                        'id': image.id,
+                        'kind': 'artifact-v1',
+                        'name': 'bzImage',
+                    },
+                    'modules': {
+                        'id': modules.id,
+                        'kind': 'artifact-v1',
+                        'name': 'modules.tar.gz',
+                    },
+                },
+                'timeout-spec': timeout_spec,
             }),
         ))
         tag = '-'.join((

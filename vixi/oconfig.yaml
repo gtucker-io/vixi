@@ -29,8 +29,8 @@ switchboard:
 
 # boot a kernel in KubeVirt
 - task: kboot
-  channel: task
-  match: {name: kbuild, op: complete}
+  channel: node
+  match: {kind: vixi.group, name: kbuild, op: populate}  # , result: pass}
   scheduler: tekton-kvm
 
 # run KUnit in Tekton
