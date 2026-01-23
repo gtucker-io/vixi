@@ -47,7 +47,7 @@ spec:
       - name: api-key
         secret:
           secretName: api-key
-      - name: sandbox
+      - name: kboot
         persistentVolumeClaim:
           claimName: kboot
 
@@ -153,7 +153,7 @@ spec:
                   - name: cloudinitdisk
                     disk:
                       bus: virtio
-                  - name: sandbox
+                  - name: kboot
                     disk:
                       bus: virtio
                   interfaces:
@@ -179,7 +179,7 @@ spec:
                 cloudInitConfigDrive:
                   userData: |
                     #cloud-config
-              - name: sandbox
+              - name: kboot
                 persistentVolumeClaim:
                   claimName: kboot
 
@@ -199,11 +199,11 @@ spec:
         lsblk
         sudo dmesg | head -2
 
-        sudo mkdir -p /mnt/sandbox
-        sudo mount /dev/vdc /mnt/sandbox
-        sudo mkdir -p "/mnt/sandbox/$(context.pipelineRun.uid)"
-        sudo chown ubuntu: -R "/mnt/sandbox/$(context.pipelineRun.uid)"
-        export ARTIFACTS="/mnt/sandbox/$(context.pipelineRun.uid)"
+        sudo mkdir -p /mnt/kboot
+        sudo mount /dev/vdc /mnt/kboot
+        sudo mkdir -p "/mnt/kboot/$(context.pipelineRun.uid)"
+        sudo chown ubuntu: -R "/mnt/kboot/$(context.pipelineRun.uid)"
+        export ARTIFACTS="/mnt/kboot/$(context.pipelineRun.uid)"
 
         sudo dmesg > "${ARTIFACTS}/dmesg.txt"
         cat /proc/cpuinfo > "${ARTIFACTS}/cpuinfo.txt"
@@ -213,7 +213,7 @@ spec:
           "nproc": "'"$(nproc)"'"
         }' > "${ARTIFACTS}/metadata.json"
 
-        sudo umount /mnt/sandbox
+        sudo umount /mnt/kboot
 
   - name: summary
     runAfter:
@@ -225,7 +225,7 @@ spec:
       - name: api-key
         secret:
           secretName: api-key
-      - name: sandbox
+      - name: kboot
         persistentVolumeClaim:
           claimName: kboot
       steps:
@@ -235,8 +235,8 @@ spec:
         volumeMounts:
         - name: api-key
           mountPath: /home/renelick/.config/renelick
-        - name: sandbox
-          mountPath: /home/renelick/sandbox
+        - name: kboot
+          mountPath: /home/renelick/kboot
         securityContext:
           privileged: True
           runAsUser: 0
@@ -253,10 +253,10 @@ spec:
               exit 1
           }
           [ -e /dev/loop0 ] || mknod /dev/loop0 b 7 0
-          loopdev=$(losetup --find --show sandbox/disk.img)
-          mkdir -p /tmp/sandbox-disk
-          mount sandbox/disk.img /tmp/sandbox-disk
-          export ARTIFACTS="/tmp/sandbox-disk/$(context.pipelineRun.uid)"
+          loopdev=$(losetup --find --show kboot/disk.img)
+          mkdir -p /tmp/kboot-disk
+          mount kboot/disk.img /tmp/kboot-disk
+          export ARTIFACTS="/tmp/kboot-disk/$(context.pipelineRun.uid)"
 
           [ -z "${STORAGE}" ] && {
               echo "WARNING - no storage defined, artifacts will not be saved"
@@ -311,7 +311,7 @@ spec:
               rm -rf "${ARTIFACTS}"
           }
 
-          umount /tmp/sandbox-disk
+          umount /tmp/kboot-disk
           losetup --detach "${loopdev}"
 
   finally:
