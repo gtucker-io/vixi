@@ -6,21 +6,22 @@
 
 set -eo pipefail
 
-URL="https://storage.googleapis.com/tekton-releases/"
+NEW="https://infra.tekton.dev/tekton-releases/"
+OLD="https://storage.googleapis.com/tekton-releases/"
 
 echo "Deploying pipelines..."
-kubectl apply -f "$URL"pipeline/previous/v1.2.0/release.yaml
+kubectl apply -f "$NEW"pipeline/previous/v1.7.0/release.yaml
 
 echo "Deploying dashboard..."
-kubectl apply -f "$URL"dashboard/previous/v0.59.0/release.yaml
+kubectl apply -f "$NEW"dashboard/previous/v0.65.0/release.yaml
 
 echo "Waiting for webhook deployments..."
 kubectl wait -n tekton-pipelines deployment \
     tekton-pipelines-webhook --for condition=Available --timeout 10m
 
 echo "Deploying triggers..."
-kubectl apply -f "$URL"triggers/previous/v0.32.0/release.yaml
-kubectl apply -f "$URL"triggers/previous/v0.32.0/interceptors.yaml
+kubectl apply -f "$OLD"triggers/previous/v0.34.0/release.yaml
+kubectl apply -f "$OLD"triggers/previous/v0.34.0/interceptors.yaml
 
 echo "Patching feature flags..."
 kubectl -n tekton-pipelines get configmap feature-flags -o yaml \
