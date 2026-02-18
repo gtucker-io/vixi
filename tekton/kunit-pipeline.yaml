@@ -222,15 +222,40 @@ spec:
   #
   finally:
   - name: cleanup
+    params:
+    - { name: uuid,        value: $(params.uuid)                            }
+    - { name: status,      value: $(tasks.status)                           }
     taskSpec:
       volumes:
       - name: api-key
         secret:
           secretName: api-key
+      params:
+      - name: uuid
+      - name: status
+      workspaces:
+      - name: sandbox
+      - name: artifacts
       steps:
-      # ToDo: add summary node with end time, task status,
-      # flat build script and log artifacts
-      - name: complete-task
+      - name: summary
+        image: registry.gitlab.com/gtucker.io/renelick:main
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: api-key
+          mountPath: /home/renelick/.config/renelick
+        script: |
+          #!$(workspaces.sandbox.path)/venv/bin/python
+          import vixi.kbuild
+          vixi.write_string(
+              '$(workspaces.artifacts.path)/result', '$(params.status)'
+          )
+          steps = ['checkout', 'build', 'exec']
+          node = vixi.kbuild.add_results(
+              '$(workspaces.artifacts.path)', steps, 'kunit'
+          )
+          print('  '.join((node.id, node.name)))
+
+      - name: complete
         image: registry.gitlab.com/gtucker.io/renelick:main
         imagePullPolicy: Always
         volumeMounts:
