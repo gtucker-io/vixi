@@ -194,8 +194,8 @@ def add_result_node(base):
     ))
 
 
-def add_results(base, steps):
-    """Add a database vixi.group tree for a kbuild pipeline"""
+def add_results(base, steps, job='kbuild'):
+    """Add a database vixi.group tree for a primitive job pipeline"""
     uuid = _load_env(base, 'global.env').get('UUID')
     if not uuid:
         print("WARNING - no task UUID defined, not adding summary node")
@@ -218,29 +218,28 @@ def add_results(base, steps):
 
     rk = Client().api
     parent = rk.node.find([
-        'kind=vixi.kbuild.step', f'task.id={uuid}', f'data.step={complete[-1]}'
+        f'kind=vixi.{job}.step', f'task.id={uuid}', f'data.step={complete[-1]}'
     ], limit=1)[0]
-    data = parent.data.to_dict()
     steps = [
         Tree(root=Node(
             name=name,
             kind='vixi.test',
             task=parent.task,
             data=Data.from_dict({
-                'path': ['kbuild', name],
+                'path': [job, name],
                 'result': result,
             }),
         )) for name, stat, result in results
     ]
     tree = Tree(
         root=Node(
-            name='kbuild',
+            name=job,
             kind='vixi.group',
             parent=parent.id,
             task=parent.task,
             data=Data.from_dict({
-                'revision': data.get('revision'),
-                'params': data.get('params'),
+                'revision': parent.data['revision'],
+                'params': parent.data['params'],
                 'result': (
                     'pass'
                     if read_string(os.path.join(base, 'result')) == 'Succeeded'
