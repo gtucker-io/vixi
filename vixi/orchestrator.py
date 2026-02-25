@@ -85,6 +85,7 @@ class VixiOrchestrator(Subscriber):
 
     async def _run_kbuild(self, event, scheduler):
         tree, revision = (event[key] for key in ['tree', 'revision'])
+        patches = event.get('patches', '')
         tree_config = self._oconfig['trees'].get(tree)
         if tree_config is None:
             raise RenelickError(f"Unknown tree: {tree}")
@@ -97,6 +98,7 @@ class VixiOrchestrator(Subscriber):
                 'tree': tree,
                 'url': tree_config['url'],
                 'revision': revision,
+                'patches': patches,
                 'orch': 'vixi',
                 'timeout-spec': timeout_spec,
             }),
@@ -106,8 +108,12 @@ class VixiOrchestrator(Subscriber):
 
     # ToDo: consolidate with kbuild
     async def _run_kunit(self, event, scheduler):
-        tree, revision = (event[key] for key in ['tree', 'revision'])
-        test_filter = event.get('filter', '')
+        tree, revision = (event[key] for key in [
+            'tree', 'revision',
+        ])
+        test_filter, patches = (event.get(key, '') for key in [
+            'filter', 'patches',
+        ])
         tree_config = self._oconfig['trees'].get(tree)
         if tree_config is None:
             raise RenelickError(f"Unknown tree: {tree}")
@@ -120,6 +126,7 @@ class VixiOrchestrator(Subscriber):
                 'tree': tree,
                 'url': tree_config['url'],
                 'revision': revision,
+                'patches': patches,
                 'filter': test_filter,
                 'orch': 'vixi',
                 'timeout-spec': timeout_spec,
