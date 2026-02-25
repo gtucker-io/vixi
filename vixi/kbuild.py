@@ -5,15 +5,21 @@
 """VIXI kernel build module"""
 
 import json
+import hashlib
 import os
 import re
+from urllib.parse import urlparse
+
+import unidiff
 
 from renelick.client import (
     Client,
     NewNode as Node,
     NewNodeData as Data,
     NewTree as Tree,
+    RenelickError,
 )
+from renelick.client.cli import storage as cli_storage
 from .base import sh, shx, read_string, iter_files, rk_storage
 
 TORVALDS = 'https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git'
@@ -70,10 +76,15 @@ def _load_opt(base):
 
 def _gather_revision(opt):
     cwd = os.path.join(opt['JOB'], opt['TREE'])
+    sha1 = sh('git show --format=%H -s', cwd).strip()
     return {
-        'sha1': sh('git show --format=%H -s', cwd).strip(),
+        'sha1': sha1,
         'describe': opt['DESCRIBE'],
         'subject': sh('git show --format=%s -s', cwd).strip(),
+        'digest': (
+            opt.get('DIGEST')
+            or hashlib.sha256(sha1.encode('utf-8')).hexdigest(),
+        ),
         'tree': opt['TREE'],
         'url': opt['URL'],
     }
@@ -81,8 +92,12 @@ def _gather_revision(opt):
 
 def save_env(base):
     """Save the kbuild environment variables in plain-text files"""
-    _dump_env(base, 'global.env', ['UUID', 'STORAGE', 'JOB', 'FILTER'])
-    _dump_env(base, 'source.env', ['TREE', 'URL', 'REVISION', 'CLEAN'])
+    _dump_env(base, 'global.env', [
+        'UUID', 'STORAGE', 'JOB', 'FILTER',
+    ])
+    _dump_env(base, 'source.env', [
+        'TREE', 'URL', 'REVISION', 'PATCHES', 'CLEAN',
+    ])
     arch, cc, ccver = (os.getenv(key) for key in ('ARCH', 'CC', 'CCVER'))
     _dump_env(base, 'params.env', [
         'ARCH', 'DEFCONFIG', 'OPTS', 'CC', 'CCVER', 'CCARCH',
@@ -116,6 +131,10 @@ def dump_info(base):
     for key in ['TREE', 'URL', 'REVISION']:
         value = os.getenv(key)
         print(f"  {key.lower():12s}  {value}")
+    if patches := os.getenv('PATCHES').split():
+        print("Patches:")
+        for patch in patches:
+            print(f"  {patch}")
     print("Parameters:")
     with open(os.path.join(base, 'params.json'), encoding='utf-8') as pfile:
         params = json.load(pfile)
@@ -142,11 +161,20 @@ def checkout(sandbox, path, revision, clean=False, gitonly=False):
         print(f"New checkout, mirror: {mirror}", flush=True)
         opts = '--bare' if gitonly else ''
         shx(f'git clone -v --reference-if-able={mirror} {opts} {url} {cwd}')
+    print("User:     ", end='', flush=True)
+    if shx('git config user.name', cwd, retcode=True) != 0:
+        shx('git config user.name VIXI', cwd)
+    print("Email:    ", end='', flush=True)
+    if shx('git config user.email', cwd, retcode=True) != 0:
+        shx('git config user.email vixi@renelick.org', cwd)
     print("Remote repositories:", flush=True)
     shx('git remote -v', cwd)
     shx(f'git fetch --tags --force origin {sha1}', cwd)
     if not gitonly:
         shx('git reset --hard', cwd)
+        if os.path.exists(os.path.join(cwd, '.git/rebase-apply')):
+            print("Aborting previous mailbox patch")
+            shx('git am --abort', cwd)
         shx('git checkout FETCH_HEAD', cwd)
         shx(f'git fetch --tags {TORVALDS}', cwd)
         print(sh('git log -n1', cwd), flush=True)
@@ -154,19 +182,65 @@ def checkout(sandbox, path, revision, clean=False, gitonly=False):
     return cwd
 
 
+def _normalise_diff(path):
+    with open(path, encoding='utf-8') as diff_file:
+        patchset = unidiff.PatchSet(diff_file)
+    for patch in patchset:
+        yield str(patch.patch_info)
+        yield f'--- {patch.source_file}\n'
+        yield f'+++ {patch.target_file}\n'
+        for hunk in patch:
+            yield (
+                f'@@ -{hunk.source_start:d},{hunk.source_length:d} '
+                f'+{hunk.target_start:d},{hunk.target_length:d} @@\n'
+            )
+            for line in hunk:
+                yield str(line)
+
+
+def apply_patches(patches, artifacts, cwd):
+    """Apply a series of patches in a checkout and generate normalised diff"""
+    base = sh('git show --format=%H -s', cwd=cwd)
+    for patch_url in patches:
+        patch_name = urlparse(patch_url).path.split('/')[-1]
+        dest = os.path.join(artifacts, patch_name)
+        cli_storage.download_raw(patch_url, dest)
+        if shx(f'git am {dest}', cwd, retcode=True) != 0:
+            shx('git am --show-current-patch=diff', cwd)
+            shx('git am --abort', cwd)
+            raise RenelickError(f"Failed to apply patch: {patch_name}")
+        applied.append({
+            'url': patch_url,
+            'subject': sh('git show --format=%s -s', cwd).strip(),
+        })
+    print("History:", flush=True)
+    shx(f'git log --oneline --abbrev=12 {base}^..HEAD', cwd)
+    diff_path = os.path.join(artifacts, 'patchset.diff')
+    with open(diff_path, 'w', encoding='utf-8') as diff_file:
+        diff_file.write(sh(f'git diff -U0 {base}..HEAD', cwd))
+    checksum = hashlib.sha256()
+    checksum.update(base.encode('utf-8'))
+    for line in _normalise_diff(diff_path):
+        checksum.update(line.encode('utf-8'))
+    return checksum
+
+
 def env_checkout(base, sandbox):
     """Initialise a kernel checkout using environment variables"""
     opt, _ = _load_opt(base)
     path = os.path.join('src', opt['JOB'])
+    artifacts = os.path.join(base, opt['STEP'])
     revision = {
         'tree': opt['TREE'],
         'url': opt['URL'],
         'sha1': opt['REVISION'],
     }
-    clean = opt.get('CLEAN') == 'true'
-    cwd = checkout(sandbox, path, revision, clean)
-    describe = sh('git describe --always', cwd)
-    _dump_env(base, 'source.env', [], {'DESCRIBE': describe}, True)
+    cwd = checkout(sandbox, path, revision, opt.get('CLEAN') == 'true')
+    patched = apply_patches(opt['PATCHES'].split(), artifacts, cwd)
+    _dump_env(base, 'source.env', [], {
+        'DESCRIBE': sh('git describe --always', cwd),
+        'DIGEST': patched.hexdigest(),
+    }, True)
     return cwd
 
 
