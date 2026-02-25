@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 #
-# Copyright (C) 2024, 2025 Guillaume Tucker
+# Copyright (C) 2024, 2025, 2026 Guillaume Tucker
 
 # -----------------------------------------------------------------------------
 # Service Account
@@ -128,6 +128,7 @@ spec:
   -  name: tree
   -  name: url
   -  name: revision
+  - {name: patches,    default: ''}
   - {name: clean,      default: 'skip'}
   - {name: filter,     default: ''}
   - {name: arch,       default: 'x86_64'}
@@ -175,6 +176,7 @@ spec:
       - {name: tree,       value: $(tt.params.tree)}
       - {name: url,        value: $(tt.params.url)}
       - {name: revision,   value: $(tt.params.revision)}
+      - {name: patches,    value: $(tt.params.patches)}
       - {name: clean,      value: $(tt.params.clean)}
       - {name: filter,     value: $(tt.params.filter)}
       - {name: arch,       value: $(tt.params.arch)}
@@ -197,6 +199,7 @@ spec:
   - {name: tree,       value: $(body.tree)}
   - {name: url,        value: $(body.url)}
   - {name: revision,   value: $(body.revision)}
+  - {name: patches,    value: $(body.patches)}
   - {name: clean,      value: $(body.clean)}
   - {name: filter,     value: $(body.filter)}
   - {name: arch,       value: $(body.arch)}
@@ -315,6 +318,7 @@ spec:
   -  name: tree
   -  name: url
   -  name: revision
+  - {name: patches,    default: ''}
   - {name: clean,      default: 'skip'}
   - {name: filter,     default: ''}
   - {name: arch,       default: 'x86_64'}
@@ -362,6 +366,7 @@ spec:
       - {name: tree,       value: $(tt.params.tree)}
       - {name: url,        value: $(tt.params.url)}
       - {name: revision,   value: $(tt.params.revision)}
+      - {name: patches,    value: $(tt.params.patches)}
       - {name: clean,      value: $(tt.params.clean)}
       - {name: filter,     value: $(tt.params.filter)}
       - {name: arch,       value: $(tt.params.arch)}
@@ -384,6 +389,7 @@ spec:
   - {name: tree,       value: $(body.tree)}
   - {name: url,        value: $(body.url)}
   - {name: revision,   value: $(body.revision)}
+  - {name: patches,    value: $(body.patches)}
   - {name: clean,      value: $(body.clean)}
   - {name: filter,     value: $(body.filter)}
   - {name: arch,       value: $(body.arch)}

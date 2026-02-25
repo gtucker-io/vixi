@@ -14,6 +14,7 @@ spec:
   -   name: tree
   -   name: url
   -   name: revision
+  - { name: patches,    default: ''                                  }
   -   name: arch
   -   name: defconfig
   -   name: opts
@@ -46,6 +47,7 @@ spec:
     - { name: tree,       value: $(params.tree)       }
     - { name: url,        value: $(params.url)        }
     - { name: revision,   value: $(params.revision)   }
+    - { name: patches,    value: $(params.patches)    }
     - { name: arch,       value: $(params.arch)       }
     - { name: defconfig,  value: $(params.defconfig)  }
     - { name: opts,       value: $(params.opts)       }
@@ -131,7 +133,7 @@ spec:
   # cleanup
   #
   finally:
-  - name: cleanup
+  - name: complete
     taskRef:
       name: kbuild-result
     workspaces:

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MIT
 #
-# Copyright (C) 2025 Guillaume Tucker
+# Copyright (C) 2025, 2026 Guillaume Tucker
 
 apiVersion: tekton.dev/v1
 kind: Task
@@ -12,7 +12,7 @@ spec:
   - name: sandbox
   - name: artifacts
   steps:
-  # ToDo: consolidate with kbuild as a common set of Git checkout tools
+  # ToDo: consolidate with vixi.kbuild as a common set of Git checkout tools
   - &script-step
     name: checkout
     image: alpine:3.22.1
@@ -119,6 +119,7 @@ spec:
   -   name: tree
   -   name: url
   -   name: revision
+  - { name: patches,    default: ''                                  }
   -   name: arch
   -   name: defconfig
   -   name: opts
@@ -153,6 +154,7 @@ spec:
     - { name: tree,       value: $(params.tree)       }
     - { name: url,        value: $(params.url)        }
     - { name: revision,   value: $(params.revision)   }
+    - { name: patches,    value: $(params.patches)    }
     - { name: arch,       value: $(params.arch)       }
     - { name: defconfig,  value: $(params.defconfig)  }
     - { name: opts,       value: $(params.opts)       }
