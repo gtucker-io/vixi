@@ -41,8 +41,9 @@ def mirror_node(base):
     ))
 
 
-def _dump_env(base, fname, keys, extra=None):
-    with open(os.path.join(base, fname), 'w', encoding='utf-8') as env_file:
+def _dump_env(base, fname, keys, extra=None, append=False):
+    mode = 'a' if append else 'w'
+    with open(os.path.join(base, fname), mode, encoding='utf-8') as env_file:
         for key in keys:
             value = os.getenv(key)
             env_file.write(f'export {key}="{value}"\n')
@@ -131,24 +132,41 @@ def checkout(sandbox, path, revision, clean=False, gitonly=False):
     cwd = os.path.join(sandbox, path, tree)
     if gitonly is True:
         cwd += '.git'
-    print(f"Checkout directory: {cwd}")
+    print(f"Path:     {cwd}", flush=True)
     if clean is True:
-        print("Deleting any existing checkout")
+        print("Deleting any existing checkout", flush=True)
         shx(f'rm -rf {cwd}')
     if not os.path.exists(cwd):
         shx(f'mkdir -p {cwd}')
         mirror = os.path.join(sandbox, 'mirror', f'{tree}.git')
-        print(f"New checkout, mirror: {mirror}")
+        print(f"New checkout, mirror: {mirror}", flush=True)
         opts = '--bare' if gitonly else ''
         shx(f'git clone -v --reference-if-able={mirror} {opts} {url} {cwd}')
+    print("Remote repositories:", flush=True)
     shx('git remote -v', cwd)
     shx(f'git fetch --tags origin {sha1}', cwd)
     if not gitonly:
         shx('git reset --hard', cwd)
         shx('git checkout FETCH_HEAD', cwd)
         shx(f'git fetch --tags {TORVALDS}', cwd)
-        print(sh('git log -n1', cwd))
+        print(sh('git log -n1', cwd), flush=True)
     shx(f'du -hs {cwd}')
+    return cwd
+
+
+def env_checkout(base, sandbox):
+    """Initialise a kernel checkout using environment variables"""
+    opt, _ = _load_opt(base)
+    path = os.path.join('src', opt['JOB'])
+    revision = {
+        'tree': opt['TREE'],
+        'url': opt['URL'],
+        'sha1': opt['REVISION'],
+    }
+    clean = opt.get('CLEAN') == 'true'
+    cwd = checkout(sandbox, path, revision, clean)
+    describe = sh('git describe --always', cwd)
+    _dump_env(base, 'source.env', [], {'DESCRIBE': describe}, True)
     return cwd
 
 
