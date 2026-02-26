@@ -78,9 +78,9 @@ spec:
     - name: sandbox
     - name: artifacts
     params:
-    - { name: step,        value: checkout                                  }
-    - { name: image,       value: alpine/git:v2.49.1                        }
-    - { name: parent,      value: ''                                        }
+    - { name: step,    value: checkout                                      }
+    - { name: image,   value: registry.gitlab.com/gtucker.io/renelick:main  }
+    - { name: parent,  value: ''                                            }
 
   # ToDo: group defconfig + image (+ dts) + modules in a single task with
   # several steps and keep the root node as the parent for each step?  Lineage

@@ -193,32 +193,12 @@ spec:
       cd "${STEP}"
 
       cat >"${SCRIPT}" <<EOF
-      #!/usr/bin/env ash
-      set -eo pipefail
-
-      echo "Tree:     $TREE"
-      echo "URL:      $URL"
-      echo "Revision: $REVISION"
-
-      [ "${CLEAN}" == "true" ] && {
-          echo "Doing a clean build with new checkout for ${TREE}"
-          rm -rf "${TREE}"
-      }
-
-      if [ ! -d "$TREE" ]; then
-          git clone --reference-if-able="$MIRROR" -v "$URL" "$TREE"
-      fi
-
-      cd "$TREE"
-      git remote -v
-      git fetch --tags origin "$REVISION"
-      git checkout FETCH_HEAD
-      git fetch --tags \
-          https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
-      git log -n1
-      du -hs .git
-      echo "export DESCRIBE=\"\$(git describe --always)\"" \
-           >> $(workspaces.artifacts.path)/source.env
+      #!$(workspaces.sandbox.path)/venv/bin/python
+      import vixi.kbuild
+      vixi.kbuild.env_checkout(
+          '$(workspaces.artifacts.path)',
+          '$(workspaces.sandbox.path)',
+      )
       EOF
 
       cat "${SCRIPT}"
@@ -380,7 +360,7 @@ spec:
       urls = vixi.kbuild.upload_artifacts('$(workspaces.artifacts.path)', node)
       for url in urls:
           print(url)
-      sys.exit(node.data.to_dict()['status'])
+      sys.exit(node.data['status'])
 ---
 
 apiVersion: tekton.dev/v1
