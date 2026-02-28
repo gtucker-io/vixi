@@ -24,13 +24,17 @@ def sh(cmd, cwd=None):
     ).decode('utf-8').strip()
 
 
-def shx(cmd, cwd=None):
+def shx(cmd, cwd=None, retcode=False):
     """Run a shell command and return stdout
 
     As a simpler version of sh(), run a command and raise a CalledProcessError
-    if it fails.  The output is printed on stdout as-is.
+    if it fails or return the exit code if retcode is True.  The output is
+    printed on stdout as-is.
     """
-    subprocess.check_call(cmd.split(), cwd=cwd)
+    return (
+        subprocess.call(cmd.split(), cwd=cwd) if retcode
+        else subprocess.check_call(cmd.split(), cwd=cwd)
+    )
 
 
 def read_string(path):
