@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: LGPL-2.1-or-later
+#
+# Copyright (C) 2026 Guillaume Tucker
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch]
+metadata.allow-direct-references = true
+
+[project]
+name = "vixi"
+version = "0.0.1"
+requires-python = ">= 3.10"
+authors = [
+  {name = "Guillaume Tucker", email = "gtucker@gtucker.io"},
+]
+
+dependencies = [
+]
+
+[project.optional-dependencies]
+rk = [
+  # This is a hack to avoid installing it again when using the Docker image
+  "renelick[cli]@git+https://gitlab.com/gtucker.io/renelick.git@main",
+]
