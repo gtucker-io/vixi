@@ -231,7 +231,7 @@ spec:
         - name: kboot
           mountPath: /home/renelick/kboot
         - name: sandbox
-          mountPath: /home/renelick/sandbox
+          mountPath: /sandbox
         securityContext:
           privileged: True
           runAsUser: 0
@@ -240,7 +240,6 @@ spec:
         - { name: UUID,       value: $(params.uuid)              }
         - { name: PARENT,     value: $(params.kbuild-node-id)    }
         - { name: STORAGE,    value: $(params.storage)           }
-        - { name: PYTHONPATH, value: /home/renelick/sandbox/vixi }
         script: |
           #!/usr/bin/env bash
 
@@ -250,12 +249,14 @@ spec:
           mount kboot/disk.img /tmp/kboot-disk
           export ARTIFACTS="/tmp/kboot-disk/$(context.pipelineRun.uid)"
 
-          su renelick bash -c \
-              'python -c "import vixi.kboot; vixi.kboot.summary()"'
+          su renelick bash -c "/sandbox/venv/bin/python -c \
+              'import vixi.kboot; vixi.kboot.summary()'"
 
+          rm -rf "/tmp/kboot-dist/$(context.pipelineRun.uid)"
           umount /tmp/kboot-disk
           losetup --detach "${loopdev}"
-          su renelick bash -c 'python -c "import vixi; vixi.complete()"'
+          su renelick bash -c "/sandbox/venv/bin/python -c \
+              'import vixi; vixi.complete()'"
 
   - name: cleanup
     taskRef:

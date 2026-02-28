@@ -93,9 +93,8 @@ spec:
     - { name: UUID,       value: $(params.uuid)                  }
     - { name: TREE,       value: $(params.tree)                  }
     - { name: URL,        value: $(params.url)                   }
-    - { name: PYTHONPATH, value: $(workspaces.sandbox.path)/vixi }
     script: |
-      #!/usr/bin/env python
+      #!$(workspaces.sandbox.path)/venv/bin/python
       import vixi.kbuild
       node = vixi.kbuild.mirror_node('$(workspaces.tmp.path)')
       vixi.complete()
@@ -155,9 +154,8 @@ spec:
     - { name: CC,         value: $(params.cc)                    }
     - { name: CCVER,      value: $(params.ccver)                 }
     - { name: CCARCH,     value: $(params.ccarch)                }
-    - { name: PYTHONPATH, value: $(workspaces.sandbox.path)/vixi }
     script: |
-      #!/usr/bin/env python
+      #!$(workspaces.sandbox.path)/venv/bin/python
       import vixi.kbuild
       artifacts = '$(workspaces.artifacts.path)'
       vixi.kbuild.save_env(artifacts)
@@ -372,9 +370,8 @@ spec:
     env:
     - { name: PARENT,      value: $(params.parent)                }
     - { name: STEP,        value: $(params.step)                  }
-    - { name: PYTHONPATH,  value: $(workspaces.sandbox.path)/vixi }
     script: |
-      #!/usr/bin/env python
+      #!$(workspaces.sandbox.path)/venv/bin/python
       import sys
       import vixi.kbuild
       node = vixi.kbuild.add_result_node('$(workspaces.artifacts.path)')
@@ -409,10 +406,8 @@ spec:
     volumeMounts:
     - name: api-key
       mountPath: /home/renelick/.config/renelick
-    env:
-    - { name: PYTHONPATH,  value: $(workspaces.sandbox.path)/vixi }
     script: |
-      #!/usr/bin/env python
+      #!$(workspaces.sandbox.path)/venv/bin/python
       import vixi.kbuild
       vixi.write_string(
           '$(workspaces.artifacts.path)/result', '$(params.status)'
