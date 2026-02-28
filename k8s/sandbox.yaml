@@ -51,24 +51,25 @@ spec:
           ls -l /sandbox
 
       containers:
-      # Note: keeping a checkout of vixi.git here is a development trick
-      - name: vixi-checkout
-        image: alpine/git:v2.49.1
+      - name: venv
+        image: python:3.10
         volumeMounts:
         - name: sandbox
-          mountPath: /sandbox
-        workingDir: /sandbox
+          mountPath: /workspace/sandbox
+        workingDir: /workspace/sandbox
         securityContext:
           runAsNonRoot: true
           runAsUser: 1000
         command:
-        - 'ash'
+        - '/usr/bin/env'
+        - 'bash'
         - '-c'
         - |
           set -eo pipefail
-          [ -d vixi/.git ] || git clone https://gitlab.com/gtucker.io/vixi.git
-          cd vixi
-          git config set advice.detachedHead false
-          git fetch origin main
-          git checkout FETCH_HEAD
-          ls -l
+          python -m venv --system-site-packages venv
+          (
+              . venv/bin/activate
+              pip install --upgrade pip
+              pip uninstall -y vixi
+              pip install git+https://gitlab.com/gtucker.io/vixi.git@main
+          )
