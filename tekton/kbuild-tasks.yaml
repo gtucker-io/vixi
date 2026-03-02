@@ -188,11 +188,11 @@ spec:
       . $(workspaces.artifacts.path)/source.env
       . $(workspaces.artifacts.path)/params.env
       MIRROR="$(workspaces.sandbox.path)/mirror/${TREE}.git"
-      SCRIPT="${STEP}.sh"
+      EXEC="${STEP}"-script
       mkdir "${STEP}"
       cd "${STEP}"
 
-      cat >"${SCRIPT}" <<EOF
+      cat >"${EXEC}" <<EOF
       #!$(workspaces.sandbox.path)/venv/bin/python
       import vixi.kbuild
       vixi.kbuild.env_checkout(
@@ -201,8 +201,8 @@ spec:
       )
       EOF
 
-      cat "${SCRIPT}"
-      chmod 0755 "${SCRIPT}"
+      cat "${EXEC}"
+      chmod 0755 "${EXEC}"
 
   - <<: *script-step
     name: defconfig
@@ -213,11 +213,11 @@ spec:
 
       . $(workspaces.artifacts.path)/source.env
       . $(workspaces.artifacts.path)/params.env
-      SCRIPT="${STEP}.sh"
+      EXEC="${STEP}"-script
       mkdir "${STEP}"
       cd "${STEP}"
 
-      cat >"${SCRIPT}" <<EOF
+      cat >"${EXEC}" <<EOF
       #!/usr/bin/env bash
       set -eo pipefail
 
@@ -233,8 +233,8 @@ spec:
       ln -s "\$(pwd)/${BDIR}/defconfig" "${PWD}/defconfig"
       EOF
 
-      cat "${SCRIPT}"
-      chmod 0755 "${SCRIPT}"
+      cat "${EXEC}"
+      chmod 0755 "${EXEC}"
 
   - <<: *script-step
     name: image
@@ -245,11 +245,11 @@ spec:
 
       . $(workspaces.artifacts.path)/source.env
       . $(workspaces.artifacts.path)/params.env
-      SCRIPT="${STEP}.sh"
+      EXEC="${STEP}"-script
       mkdir "${STEP}"
       cd "${STEP}"
 
-      cat >"${SCRIPT}" <<EOF
+      cat >"${EXEC}" <<EOF
       #!/usr/bin/env bash
       set -eo pipefail
 
@@ -258,8 +258,8 @@ spec:
       ln -s "\$(pwd)/${BDIR}/arch/${ARCH}/boot/bzImage" "${PWD}/bzImage"
       EOF
 
-      cat "${SCRIPT}"
-      chmod 0755 "${SCRIPT}"
+      cat "${EXEC}"
+      chmod 0755 "${EXEC}"
 
   - <<: *script-step
     name: modules
@@ -270,11 +270,11 @@ spec:
 
       . $(workspaces.artifacts.path)/source.env
       . $(workspaces.artifacts.path)/params.env
-      SCRIPT="${STEP}.sh"
+      EXEC="${STEP}"-script
       mkdir "${STEP}"
       cd "${STEP}"
 
-      cat >"${SCRIPT}" <<EOF
+      cat >"${EXEC}" <<EOF
       #!/usr/bin/env bash
       set -eo pipefail
 
@@ -289,8 +289,8 @@ spec:
       ln -s "\$(pwd)/modules.tar.gz" "${PWD}/modules.tar.gz"
       EOF
 
-      cat "${SCRIPT}"
-      chmod 0755 "${SCRIPT}"
+      cat "${EXEC}"
+      chmod 0755 "${EXEC}"
 ---
 
 apiVersion: tekton.dev/v1
@@ -326,8 +326,8 @@ spec:
     script: |
       set -e
       . $(workspaces.artifacts.path)/global.env
-      SCRIPT=$(workspaces.artifacts.path)/${STEP}/${STEP}.sh
-      LOG=$(workspaces.artifacts.path)/${STEP}/${STEP}.txt
+      EXEC=$(workspaces.artifacts.path)/${STEP}/${STEP}-script
+      LOG=$(workspaces.artifacts.path)/${STEP}/${STEP}-log.txt
       STATUS=$(workspaces.artifacts.path)/${STEP}.status
       TIME_PX="$(workspaces.artifacts.path)/${STEP}"
       echo -n $(date -Iseconds) > "${TIME_PX}-start-time"
@@ -335,7 +335,7 @@ spec:
       (
         set +e
         cd "${JOB}"
-        "${SCRIPT}" 2>&1
+        "${EXEC}" 2>&1
         echo -n $? > "${STATUS}"
       ) | tee "${LOG}"
       echo -n $(date -Iseconds) > "${TIME_PX}-end-time"

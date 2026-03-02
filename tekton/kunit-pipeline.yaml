@@ -28,11 +28,11 @@ spec:
       . $(workspaces.artifacts.path)/source.env
       . $(workspaces.artifacts.path)/params.env
       MIRROR="$(workspaces.sandbox.path)/mirror/${TREE}.git"
-      SCRIPT="${STEP}.sh"
+      EXEC="${STEP}"-script
       mkdir "${STEP}"
       cd "${STEP}"
 
-      cat >"${SCRIPT}" <<EOF
+      cat >"${EXEC}" <<EOF
       #!$(workspaces.sandbox.path)/venv/bin/python
       import vixi.kbuild
       vixi.kbuild.env_checkout(
@@ -41,8 +41,8 @@ spec:
       )
       EOF
 
-      cat "${SCRIPT}"
-      chmod 0755 "${SCRIPT}"
+      cat "${EXEC}"
+      chmod 0755 "${EXEC}"
 
   - <<: *script-step
     name: build
@@ -53,11 +53,11 @@ spec:
 
       . $(workspaces.artifacts.path)/source.env
       . $(workspaces.artifacts.path)/params.env
-      SCRIPT="${STEP}.sh"
+      EXEC="${STEP}"-script
       mkdir "${STEP}"
       cd "${STEP}"
 
-      cat >"${SCRIPT}" <<EOF
+      cat >"${EXEC}" <<EOF
       #!/usr/bin/env bash
       set -eo pipefail
 
@@ -73,8 +73,8 @@ spec:
       ln -s "\$(pwd)/${BDIR}/arch/${ARCH}/boot/bzImage" "${PWD}/bzImage"
       EOF
 
-      cat "${SCRIPT}"
-      chmod 0755 "${SCRIPT}"
+      cat "${EXEC}"
+      chmod 0755 "${EXEC}"
 
   - <<: *script-step
     name: exec
@@ -86,11 +86,11 @@ spec:
       . $(workspaces.artifacts.path)/source.env
       . $(workspaces.artifacts.path)/params.env
       . $(workspaces.artifacts.path)/global.env
-      SCRIPT="${STEP}.sh"
+      EXEC="${STEP}"-script
       mkdir "${STEP}"
       cd "${STEP}"
 
-      cat >"${SCRIPT}" <<EOF
+      cat >"${EXEC}" <<EOF
       #!/usr/bin/env bash
       set -eo pipefail
 
@@ -103,8 +103,8 @@ spec:
           ${FILTER}
       EOF
 
-      cat "${SCRIPT}"
-      chmod 0755 "${SCRIPT}"
+      cat "${EXEC}"
+      chmod 0755 "${EXEC}"
 ---
 
 apiVersion: tekton.dev/v1
