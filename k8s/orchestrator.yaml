@@ -42,10 +42,8 @@ spec:
           mountPath: /home/renelick/.config/renelick
         - name: sandbox
           mountPath: /sandbox
-        workingDir: /sandbox/vixi
         command:
-        - '/usr/bin/env'
-        - 'python'
+        - '/sandbox/venv/bin/python'
         - '-m'
         - 'vixi.oconfig'
         - '--verbose'
@@ -62,7 +60,4 @@ spec:
           mountPath: /home/renelick/.config/renelick
         - name: sandbox
           mountPath: /sandbox
-        env:
-        - name: PYTHONPATH  # development
-          value: /sandbox/vixi
-        command: ['/usr/bin/env', 'python', '-m', 'vixi.orchestrator']
+        command: ['/sandbox/venv/bin/python', '-m', 'vixi.orchestrator']

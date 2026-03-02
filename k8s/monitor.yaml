@@ -42,7 +42,4 @@ spec:
           mountPath: /home/renelick/.config/renelick
         - name: sandbox
           mountPath: /sandbox
-        env:
-        - name: PYTHONPATH  # development
-          value: /sandbox/vixi
-        command: ['/usr/bin/env', 'python', '-m', 'vixi.monitor']
+        command: ['/sandbox/venv/bin/python', '-m', 'vixi.monitor']

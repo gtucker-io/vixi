@@ -42,7 +42,4 @@ spec:
           mountPath: /home/renelick/.config/renelick
         - name: sandbox
           mountPath: /workspace/sandbox
-        env:
-        - name: PYTHONPATH
-          value: /workspace/sandbox/vixi
-        command: ['/usr/bin/env', 'python', '-m', 'vixi.tekton']
+        command: ['/workspace/sandbox/venv/bin/python', '-m', 'vixi.tekton']

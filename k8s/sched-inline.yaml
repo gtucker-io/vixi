@@ -43,7 +43,4 @@ spec:
         - name: sandbox
           mountPath: /workspace/sandbox
         # ToDo: add labels, also make the API filter based on the username
-        env:
-        - name: PYTHONPATH  # development
-          value: /workspace/sandbox/vixi
-        command: ['/usr/bin/env', 'python', '-m', 'vixi.inline']
+        command: ['/workspace/sandbox/venv/bin/python', '-m', 'vixi.inline']
