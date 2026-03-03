@@ -50,6 +50,8 @@ spec:
         - 'vixi.oconfig'
         - '--verbose'
         - '--dump'
+        - '--url'
+        - 'https://gitlab.com/gtucker.io/vixi/-/raw/main/vixi/oconfig.yaml?ref_type=heads'
 
       containers:
       - name: orchestrator
