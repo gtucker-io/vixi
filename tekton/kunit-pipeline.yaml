@@ -253,7 +253,8 @@ spec:
           node = vixi.kbuild.add_results(
               '$(workspaces.artifacts.path)', steps, 'kunit'
           )
-          print('  '.join((node.id, node.name)))
+          if node:
+              print('  '.join((node.id, node.name)))
 
       - name: complete
         image: registry.gitlab.com/gtucker.io/renelick:main
