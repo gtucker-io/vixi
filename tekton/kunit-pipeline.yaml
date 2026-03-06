@@ -243,6 +243,8 @@ spec:
         volumeMounts:
         - name: api-key
           mountPath: /home/renelick/.config/renelick
+        env:
+        - { name: UUID, value: $(params.uuid) }
         script: |
           #!$(workspaces.sandbox.path)/venv/bin/python
           import vixi.kbuild
@@ -255,14 +257,4 @@ spec:
           )
           if node:
               print('  '.join((node.id, node.name)))
-
-      - name: complete
-        image: registry.gitlab.com/gtucker.io/renelick:main
-        imagePullPolicy: Always
-        volumeMounts:
-        - name: api-key
-          mountPath: /home/renelick/.config/renelick
-        env:
-        - { name: UUID, value: $(params.uuid) }
-        script: |
-          [ -n "${UUID}" ] && renelick task complete "${UUID}"
+          vixi.complete()
