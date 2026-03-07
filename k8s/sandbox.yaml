@@ -47,7 +47,6 @@ spec:
           set -eo pipefail
           install -d /sandbox/mirror -o 1000 -m 0755
           install -d /sandbox/src -o 1000 -m 0755
-          install -d /sandbox/vixi -o 1000 -m 0755
           ls -l /sandbox
 
       containers:
