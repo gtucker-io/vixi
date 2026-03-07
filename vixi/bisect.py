@@ -175,7 +175,10 @@ class Bisection:
 
     def run(self, sandbox, artifacts):
         print(f"Test:     {self._data['root']}:{self._delta.name}")
-        cwd = kbuild.checkout(sandbox, 'src/bisect', self._new, gitonly=True)
+        revspec = {key: self._new[revkey] for (key, revkey) in [
+            ('tree', 'tree'), ('url', 'url'), ('rev', 'sha1'),
+        ]}
+        cwd = kbuild.checkout(sandbox, 'src/bisect', revspec, gitonly=True)
         print(f"Checking bad revision: {self._new['describe']}")
         self._event({'check': 'bad', 'sha1': self._new['sha1']})
         if not self._check(self._new, False):

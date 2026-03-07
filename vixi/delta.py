@@ -87,7 +87,7 @@ class Delta:
     def _get_base_sha1(self, cwd, url, branch):
         self._add_remote(cwd, 'base', url)
         shx(f'git fetch base {branch}', cwd)
-        sha1 = self._res.revision["sha1"]
+        sha1 = self._res.revision['sha1']
         try:
             return sh(f'git merge-base {sha1} base/{branch}', cwd)
         except SubprocessError as ex:
@@ -169,8 +169,10 @@ class Delta:
         return fixed, failing, breaking
 
     def run(self, sandbox):
-        revision = self._res.revision
-        cwd = kbuild.checkout(sandbox, 'src/delta', revision, gitonly=True)
+        revspec = {key: self._res.revision[revkey] for (key, revkey) in [
+            ('tree', 'tree'), ('url', 'url'), ('rev', 'sha1'),
+        ]}
+        cwd = kbuild.checkout(sandbox, 'src/delta', revspec, gitonly=True)
         base_sha1 = self._get_base_sha1(cwd, kbuild.TORVALDS, 'master')
         base_node = self._get_base(base_sha1) or self._make_base(base_sha1)
         base = Results(self._api, base_node)

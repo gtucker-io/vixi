@@ -74,22 +74,6 @@ def _load_opt(base):
     return opt, params
 
 
-def _gather_revision(opt):
-    cwd = os.path.join(opt['JOB'], opt['TREE'])
-    sha1 = sh('git show --format=%H -s', cwd).strip()
-    return {
-        'sha1': sha1,
-        'describe': opt['DESCRIBE'],
-        'subject': sh('git show --format=%s -s', cwd).strip(),
-        'digest': (
-            opt.get('DIGEST')
-            or hashlib.sha256(sha1.encode('utf-8')).hexdigest(),
-        ),
-        'tree': opt['TREE'],
-        'url': opt['URL'],
-    }
-
-
 def save_env(base):
     """Save the kbuild environment variables in plain-text files"""
     _dump_env(base, 'global.env', [
@@ -142,12 +126,12 @@ def dump_info(base):
             print(f"  {key.lower():12s}  {value}")
 
 
-def checkout(sandbox, path, revision, clean=False, gitonly=False):
+def checkout(sandbox, path, revspec, clean=False, gitonly=False):
     """Initialise or update a kernel checkout"""
-    tree, url, sha1 = (revision[key] for key in ('tree', 'url', 'sha1'))
+    tree, url, rev = (revspec[key] for key in ('tree', 'url', 'rev'))
     print(f"Tree:     {tree}")
     print(f"URL:      {url}")
-    print(f"Revision: {sha1}")
+    print(f"Revision: {rev}")
     cwd = os.path.join(sandbox, path, tree)
     if gitonly is True:
         cwd += '.git'
@@ -169,7 +153,7 @@ def checkout(sandbox, path, revision, clean=False, gitonly=False):
         shx('git config user.email vixi@renelick.org', cwd)
     print("Remote repositories:", flush=True)
     shx('git remote -v', cwd)
-    shx(f'git fetch --tags --force origin {sha1}', cwd)
+    shx(f'git fetch --tags --force origin {rev}', cwd)
     if not gitonly:
         shx('git reset --hard', cwd)
         if os.path.exists(os.path.join(cwd, '.git/rebase-apply')):
@@ -198,9 +182,9 @@ def _normalise_diff(path):
                 yield str(line)
 
 
-def apply_patches(patches, artifacts, cwd):
+def apply_patches(patches, sha1, artifacts, cwd):
     """Apply a series of patches in a checkout and generate normalised diff"""
-    base = sh('git show --format=%H -s', cwd=cwd)
+    applied = []
     for patch_url in patches:
         patch_name = urlparse(patch_url).path.split('/')[-1]
         dest = os.path.join(artifacts, patch_name)
@@ -214,15 +198,31 @@ def apply_patches(patches, artifacts, cwd):
             'subject': sh('git show --format=%s -s', cwd).strip(),
         })
     print("History:", flush=True)
-    shx(f'git log --oneline --abbrev=12 {base}^..HEAD', cwd)
-    diff_path = os.path.join(artifacts, 'patchset.diff')
-    with open(diff_path, 'w', encoding='utf-8') as diff_file:
-        diff_file.write(sh(f'git diff -U0 {base}..HEAD', cwd))
-    checksum = hashlib.sha256()
-    checksum.update(base.encode('utf-8'))
-    for line in _normalise_diff(diff_path):
-        checksum.update(line.encode('utf-8'))
-    return checksum
+    shx(f'git log --oneline --abbrev=12 {sha1}^..HEAD', cwd)
+    checksum = hashlib.sha256(sha1.encode('utf-8'))
+    if patches:
+        diff_path = os.path.join(artifacts, 'patchset.diff')
+        with open(diff_path, 'w', encoding='utf-8') as diff_file:
+            diff_file.write(sh(f'git diff -U0 {sha1}..HEAD', cwd))
+        for line in _normalise_diff(diff_path):
+            checksum.update(line.encode('utf-8'))
+    return {
+        'digest': checksum.hexdigest(),
+        'patches': applied,
+    }
+
+
+def _gather_revision(opt, cwd):
+    sha1 = sh('git show --format=%H -s', cwd).strip()
+    return {
+        'sha1': sha1,
+        'describe': sh('git describe --always', cwd),
+        'subject': sh('git show --format=%s -s', cwd).strip(),
+        'tree': opt['TREE'],
+        'url': opt['URL'],
+        'digest': hashlib.sha256(sha1.encode('utf-8')).hexdigest(),
+        'patches': [],
+    }
 
 
 def env_checkout(base, sandbox):
@@ -230,30 +230,40 @@ def env_checkout(base, sandbox):
     opt, _ = _load_opt(base)
     path = os.path.join('src', opt['JOB'])
     artifacts = os.path.join(base, opt['STEP'])
-    revision = {
+    revspec = {
         'tree': opt['TREE'],
         'url': opt['URL'],
-        'sha1': opt['REVISION'],
+        'rev': opt['REVISION'],
     }
-    cwd = checkout(sandbox, path, revision, opt.get('CLEAN') == 'true')
-    patched = apply_patches(opt['PATCHES'].split(), artifacts, cwd)
-    _dump_env(base, 'source.env', [], {
-        'DESCRIBE': sh('git describe --always', cwd),
-        'DIGEST': patched.hexdigest(),
-    }, True)
+    rev_path = os.path.join(base, 'revision.json')
+    with open(rev_path, 'w', encoding='utf-8') as rev_file:
+        json.dump(revspec, rev_file)
+    cwd = checkout(sandbox, path, revspec, opt.get('CLEAN') == 'true')
+    revision = _gather_revision(opt, cwd)
+    with open(rev_path, 'w', encoding='utf-8') as rev_file:
+        json.dump(revision, rev_file)
+    _dump_env(base, 'source.env', [], {'DESCRIBE': revision['describe']}, True)
+    revision.update(
+        apply_patches(opt['PATCHES'].split(), revision['sha1'], artifacts, cwd)
+    )
+    with open(rev_path, 'w', encoding='utf-8') as rev_file:
+        json.dump(revision, rev_file)
     return cwd
 
 
 def add_result_node(base):
     """Add a database result node for a kbuild step"""
     opt, params = _load_opt(base)
-    revision = _gather_revision(opt)
+    with open(os.path.join(base, 'revision.json'), encoding='utf-8') as revf:
+        revision = json.load(revf)
     uuid, job, step = (opt.get(key) for key in ('UUID', 'JOB', 'STEP'))
     time_px = os.path.join(base, step)
     status = int(read_string(os.path.join(base, '.'.join((step, 'status')))))
     rk = Client().api
     return rk.node.add(Node(
-        name=':'.join(opt[key] for key in ('TREE', 'DESCRIBE', 'STEP')),
+        name=':'.join(
+            opt.get(key, 'unknown') for key in ('TREE', 'DESCRIBE', 'STEP')
+        ),
         kind='.'.join(('vixi', job, 'step')),
         parent=opt.get('PARENT') or None,
         task=rk.task.get(uuid) if uuid else None,
@@ -342,7 +352,7 @@ def upload_artifacts(base, parent):
         dest = os.path.join(
             'vixi',
             parent.data['revision']['tree'],
-            parent.data['revision']['describe'],
+            parent.data['revision'].get('describe', 'unknown'),
             job,
             str(parent.task.id),
         )
