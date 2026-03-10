@@ -182,25 +182,48 @@ def _normalise_diff(path):
                 yield str(line)
 
 
-def apply_patches(patches, sha1, artifacts, cwd):
+def _apply_patch_rnr(patch_path, cwd):
+    with open(patch_path, encoding='utf-8') as pfile:
+        shx('patch --no-backup-if-mismatch -r- -p1', cwd, True, stdin=pfile)
+    shx('git add --update', cwd)
+    diff = sh('git diff --cached', cwd)
+    if not diff:
+        shx('git am --abort', cwd)
+        os.unlink(patch_path)
+        return None
+    print(diff, flush=True)
+    shx('git am --continue', cwd)
+    with open(patch_path, 'w', encoding='utf-8') as patch_file:
+        shx('git format-patch --stdout HEAD^', cwd, stdout=patch_file)
+    return "🎸 " + sh('git show --format=%s -s', cwd).strip()
+
+
+def apply_patches(patches, sha1, artifacts, cwd, rnr=False):
     """Apply a series of patches in a checkout and generate normalised diff"""
+    if rnr is True:
+        print("🎸 RnR enabled", flush=True)
     applied = []
     for patch_url in patches:
         patch_name = urlparse(patch_url).path.split('/')[-1]
         dest = os.path.join(artifacts, patch_name)
         cli_storage.download_raw(patch_url, dest)
-        if shx(f'git am {dest}', cwd, retcode=True) != 0:
+        if shx(f'git am {dest}', cwd, retcode=True) == 0:
+            applied.append({
+                'url': patch_url,
+                'subject': sh('git show --format=%s -s', cwd).strip(),
+            })
+        elif rnr is True:
+            subject = _apply_patch_rnr(dest, cwd)
+            if subject:
+                applied.append({'url': patch_url, 'subject': subject})
+        else:
             shx('git am --show-current-patch=diff', cwd)
             shx('git am --abort', cwd)
             raise RenelickError(f"Failed to apply patch: {patch_name}")
-        applied.append({
-            'url': patch_url,
-            'subject': sh('git show --format=%s -s', cwd).strip(),
-        })
     print("History:", flush=True)
     shx(f'git log --oneline --abbrev=12 {sha1}^..HEAD', cwd)
     checksum = hashlib.sha256(sha1.encode('utf-8'))
-    if patches:
+    if applied:
         diff_path = os.path.join(artifacts, 'patchset.diff')
         with open(diff_path, 'w', encoding='utf-8') as diff_file:
             diff_file.write(sh(f'git diff -U0 {sha1}..HEAD', cwd))
@@ -245,6 +268,9 @@ def env_checkout(base, sandbox):
     with open(rev_path, 'w', encoding='utf-8') as rev_file:
         json.dump(rev, rev_file)
     _dump_env(base, 'source.env', [], {'DESCRIBE': rev['describe']}, True)
+    rev.update(
+        apply_patches(patches, rev['sha1'], artifacts, cwd, 'rnr' in flags)
+    )
     with open(rev_path, 'w', encoding='utf-8') as rev_file:
         json.dump(rev, rev_file)
     return cwd
