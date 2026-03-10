@@ -144,7 +144,7 @@ def checkout(sandbox, path, revision, clean=False, gitonly=False):
         shx(f'git clone -v --reference-if-able={mirror} {opts} {url} {cwd}')
     print("Remote repositories:", flush=True)
     shx('git remote -v', cwd)
-    shx(f'git fetch --tags origin {sha1}', cwd)
+    shx(f'git fetch --tags --force origin {sha1}', cwd)
     if not gitonly:
         shx('git reset --hard', cwd)
         shx('git checkout FETCH_HEAD', cwd)
