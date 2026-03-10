@@ -6,6 +6,10 @@
 
 set -eo pipefail
 
+cpus="${1:-2}"
+ram="${2:-4096}"
+driver="${3:-docker}"
+
 which minikube > /dev/null 2>&1 || {
     which dpkg || {
         echo "MiniKube not found, please install it:"
@@ -23,8 +27,18 @@ which minikube > /dev/null 2>&1 || {
     sudo dpkg -i minikube_latest_amd64.deb
 }
 
+echo "Setting up Minikube cluster..."
+echo "CPUs    ${cpus}"
+echo "RAM     ${ram}"
+echo "Driver  ${driver}"
+
 minikube version
-minikube start --cpus=2 --memory=4096 --mount
+minikube start \
+    --driver="${docker}" \
+    --mount-string="$PWD":/minikube-host \
+    --mount \
+    --cpus="${cpus}" \
+    --memory="${ram}"
 minikube addons enable metrics-server
 
 kubectl label node/minikube vixi/app=true
