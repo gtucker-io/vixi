@@ -13,27 +13,29 @@ import renelick.client
 import renelick.client.cli
 
 
-def sh(cmd, cwd=None):
+def sh(cmd, cwd=None, **kwargs):
     """Run a shell command and return stdout
 
     The output of the command is returned in a string with any trainling
-    newline stripped.  Raise a CalledProcessError if the command fails.
+    newline stripped.  Any extra kwargs are passed on as Popen constructor
+    arguments.  Raise a CalledProcessError if the command fails.
     """
     return subprocess.check_output(
-        cmd.split(), cwd=cwd
+        cmd.split(), cwd=cwd, **kwargs
     ).decode('utf-8').strip()
 
 
-def shx(cmd, cwd=None, retcode=False):
+def shx(cmd, cwd=None, retcode=False, **kwargs):
     """Run a shell command and return stdout
 
     As a simpler version of sh(), run a command and raise a CalledProcessError
-    if it fails or return the exit code if retcode is True.  The output is
-    printed on stdout as-is.
+    if it fails or return the exit code if retcode is True.  Any extra kwargs
+    are passed on as Popen constructor arguments.  The output is printed on
+    stdout as-is.
     """
     return (
-        subprocess.call(cmd.split(), cwd=cwd) if retcode
-        else subprocess.check_call(cmd.split(), cwd=cwd)
+        subprocess.call(cmd.split(), cwd=cwd, **kwargs) if retcode
+        else subprocess.check_call(cmd.split(), cwd=cwd, **kwargs)
     )
 
 
