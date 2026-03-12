@@ -129,7 +129,6 @@ spec:
   -  name: url
   -  name: revision
   - {name: patches,    default: ''}
-  - {name: clean,      default: 'skip'}
   - {name: filter,     default: ''}
   - {name: arch,       default: 'x86_64'}
   - {name: defconfig,  default: 'defconfig'}
@@ -138,6 +137,7 @@ spec:
   - {name: ccver,      default: '15.2'}
   - {name: ccarch,     default: '-x86'}
   - {name: job,        default: 'kbuild'}
+  - {name: flags,      default: ''}
   resourcetemplates:
   - apiVersion: tekton.dev/v1beta1
     kind: PipelineRun
@@ -177,7 +177,6 @@ spec:
       - {name: url,        value: $(tt.params.url)}
       - {name: revision,   value: $(tt.params.revision)}
       - {name: patches,    value: $(tt.params.patches)}
-      - {name: clean,      value: $(tt.params.clean)}
       - {name: filter,     value: $(tt.params.filter)}
       - {name: arch,       value: $(tt.params.arch)}
       - {name: defconfig,  value: $(tt.params.defconfig)}
@@ -186,6 +185,7 @@ spec:
       - {name: ccver,      value: $(tt.params.ccver)}
       - {name: ccarch,     value: $(tt.params.ccarch)}
       - {name: job,        value: $(tt.params.job)}
+      - {name: flags,      value: $(tt.params.flags)}
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
@@ -200,7 +200,7 @@ spec:
   - {name: url,        value: $(body.url)}
   - {name: revision,   value: $(body.revision)}
   - {name: patches,    value: $(body.patches)}
-  - {name: clean,      value: $(body.clean)}
+  - {name: flags,      value: $(body.flags)}
   - {name: filter,     value: $(body.filter)}
   - {name: arch,       value: $(body.arch)}
   - {name: defconfig,  value: $(body.defconfig)}
@@ -319,7 +319,6 @@ spec:
   -  name: url
   -  name: revision
   - {name: patches,    default: ''}
-  - {name: clean,      default: 'skip'}
   - {name: filter,     default: ''}
   - {name: arch,       default: 'x86_64'}
   - {name: defconfig,  default: 'defconfig'}
@@ -328,6 +327,7 @@ spec:
   - {name: ccver,      default: '15.2'}
   - {name: ccarch,     default: '-x86'}
   - {name: job,        default: 'kunit'}
+  - {name: flags,      default: ''}
   resourcetemplates:
   - apiVersion: tekton.dev/v1beta1
     kind: PipelineRun
@@ -367,7 +367,6 @@ spec:
       - {name: url,        value: $(tt.params.url)}
       - {name: revision,   value: $(tt.params.revision)}
       - {name: patches,    value: $(tt.params.patches)}
-      - {name: clean,      value: $(tt.params.clean)}
       - {name: filter,     value: $(tt.params.filter)}
       - {name: arch,       value: $(tt.params.arch)}
       - {name: defconfig,  value: $(tt.params.defconfig)}
@@ -376,6 +375,7 @@ spec:
       - {name: ccver,      value: $(tt.params.ccver)}
       - {name: ccarch,     value: $(tt.params.ccarch)}
       - {name: job,        value: $(tt.params.job)}
+      - {name: flags,      value: $(tt.params.flags)}
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: TriggerBinding
@@ -390,7 +390,6 @@ spec:
   - {name: url,        value: $(body.url)}
   - {name: revision,   value: $(body.revision)}
   - {name: patches,    value: $(body.patches)}
-  - {name: clean,      value: $(body.clean)}
   - {name: filter,     value: $(body.filter)}
   - {name: arch,       value: $(body.arch)}
   - {name: defconfig,  value: $(body.defconfig)}
@@ -399,6 +398,7 @@ spec:
   - {name: ccver,      value: $(body.ccver)}
   - {name: ccarch,     value: $(body.ccarch)}
   - {name: job,        value: $(body.job)}
+  - {name: flags,      value: $(body.flags)}
 ---
 apiVersion: triggers.tekton.dev/v1beta1
 kind: EventListener

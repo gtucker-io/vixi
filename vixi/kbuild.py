@@ -77,10 +77,10 @@ def _load_opt(base):
 def save_env(base):
     """Save the kbuild environment variables in plain-text files"""
     _dump_env(base, 'global.env', [
-        'UUID', 'STORAGE', 'JOB', 'FILTER',
+        'UUID', 'STORAGE', 'JOB', 'FILTER', 'FLAGS',
     ])
     _dump_env(base, 'source.env', [
-        'TREE', 'URL', 'REVISION', 'PATCHES', 'CLEAN',
+        'TREE', 'URL', 'REVISION', 'PATCHES',
     ])
     arch, cc, ccver = (os.getenv(key) for key in ('ARCH', 'CC', 'CCVER'))
     _dump_env(base, 'params.env', [
@@ -230,6 +230,8 @@ def env_checkout(base, sandbox):
     opt, _ = _load_opt(base)
     path = os.path.join('src', opt['JOB'])
     artifacts = os.path.join(base, opt['STEP'])
+    flags = opt['FLAGS'].split()
+    patches = opt['PATCHES'].split()
     revspec = {
         'tree': opt['TREE'],
         'url': opt['URL'],
@@ -238,16 +240,13 @@ def env_checkout(base, sandbox):
     rev_path = os.path.join(base, 'revision.json')
     with open(rev_path, 'w', encoding='utf-8') as rev_file:
         json.dump(revspec, rev_file)
-    cwd = checkout(sandbox, path, revspec, opt.get('CLEAN') == 'true')
-    revision = _gather_revision(opt, cwd)
+    cwd = checkout(sandbox, path, revspec, 'clean' in flags)
+    rev = _gather_revision(opt, cwd)
     with open(rev_path, 'w', encoding='utf-8') as rev_file:
-        json.dump(revision, rev_file)
-    _dump_env(base, 'source.env', [], {'DESCRIBE': revision['describe']}, True)
-    revision.update(
-        apply_patches(opt['PATCHES'].split(), revision['sha1'], artifacts, cwd)
-    )
+        json.dump(rev, rev_file)
+    _dump_env(base, 'source.env', [], {'DESCRIBE': rev['describe']}, True)
     with open(rev_path, 'w', encoding='utf-8') as rev_file:
-        json.dump(revision, rev_file)
+        json.dump(rev, rev_file)
     return cwd
 
 

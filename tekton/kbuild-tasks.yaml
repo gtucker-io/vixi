@@ -111,7 +111,7 @@ spec:
   -   name: job
   - { name: uuid,       default: ''          }
   - { name: storage,    default: ''          }
-  - { name: clean,      default: 'skip'      }
+  - { name: flags,      default: ''          }
   - { name: filter,     default: ''          }
   -   name: tree
   -   name: url
@@ -144,7 +144,7 @@ spec:
     - { name: JOB,        value: $(params.job)                   }
     - { name: UUID,       value: $(params.uuid)                  }
     - { name: STORAGE,    value: $(params.storage)               }
-    - { name: CLEAN,      value: $(params.clean)                 }
+    - { name: FLAGS,      value: $(params.flags)                 }
     - { name: FILTER,     value: $(params.filter)                }
     - { name: TREE,       value: $(params.tree)                  }
     - { name: URL,        value: $(params.url)                   }
