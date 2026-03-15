@@ -50,6 +50,7 @@ metadata:
 spec:
   params:
   -  name: uuid
+  -  name: slot
   -  name: storage
   -  name: tree
   -  name: url
@@ -89,7 +90,7 @@ spec:
           claimName: common
       - name: sandbox
         persistentVolumeClaim:
-          claimName: sandbox
+          claimName: sandbox-$(tt.params.slot)
       - name: artifacts
         volumeClaimTemplate:
           spec:
@@ -100,6 +101,7 @@ spec:
                 storage: 1Gi
       params:
       - {name: uuid,       value: $(tt.params.uuid)}
+      - {name: slot,       value: $(tt.params.slot)}
       - {name: storage,    value: $(tt.params.storage)}
       - {name: tree,       value: $(tt.params.tree)}
       - {name: url,        value: $(tt.params.url)}
@@ -123,6 +125,7 @@ metadata:
 spec:
   params:
   - {name: uuid,       value: $(body.uuid)}
+  - {name: slot,       value: $(body.slot)}
   - {name: storage,    value: $(body.storage)}
   - {name: tree,       value: $(body.tree)}
   - {name: url,        value: $(body.url)}
@@ -242,6 +245,7 @@ metadata:
 spec:
   params:
   -  name: uuid
+  -  name: slot
   -  name: storage
   -  name: tree
   -  name: url
@@ -281,7 +285,7 @@ spec:
           claimName: common
       - name: sandbox
         persistentVolumeClaim:
-          claimName: sandbox
+          claimName: sandbox-$(tt.params.slot)
       - name: artifacts
         volumeClaimTemplate:
           spec:
@@ -292,6 +296,7 @@ spec:
                 storage: 1Gi
       params:
       - {name: uuid,       value: $(tt.params.uuid)}
+      - {name: slot,       value: $(tt.params.slot)}
       - {name: storage,    value: $(tt.params.storage)}
       - {name: tree,       value: $(tt.params.tree)}
       - {name: url,        value: $(tt.params.url)}
@@ -315,6 +320,7 @@ metadata:
 spec:
   params:
   - {name: uuid,       value: $(body.uuid)}
+  - {name: slot,       value: $(body.slot)}
   - {name: storage,    value: $(body.storage)}
   - {name: tree,       value: $(body.tree)}
   - {name: url,        value: $(body.url)}
