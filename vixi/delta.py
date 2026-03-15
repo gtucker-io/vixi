@@ -168,11 +168,13 @@ class Delta:
         ])
         return fixed, failing, breaking
 
-    def run(self, sandbox):
+    def run(self, sandbox, mirror):
         revspec = {key: self._res.revision[revkey] for (key, revkey) in [
             ('tree', 'tree'), ('url', 'url'), ('rev', 'sha1'),
         ]}
-        cwd = kbuild.checkout(sandbox, 'src/delta', revspec, gitonly=True)
+        cwd = kbuild.checkout(
+            sandbox, mirror, 'src/delta', revspec, gitonly=True
+        )
         base_sha1 = self._get_base_sha1(cwd, kbuild.TORVALDS, 'master')
         base_node = self._get_base(base_sha1) or self._make_base(base_sha1)
         print(f"Base node: {base_node.id}")
@@ -187,7 +189,9 @@ if __name__ == '__main__':
 
     root = sys.argv[1] if len(sys.argv) > 1 else '6946874e2a7e93d186fde207'
     client = ExtendedClient(verbose=True)
-    _, _, breaking = Delta(client, root, None).run('/workspace/sandbox')
+    _, _, breaking = Delta(client, root, None).run(
+        '/workspace/common/inline', '/workspace/common/mirror',
+    )
 
     for delta in breaking:
         delta_data = delta.data.to_dict()

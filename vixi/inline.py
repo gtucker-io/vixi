@@ -22,7 +22,8 @@ class InlineVIXI(Runtime):
     additional dedicated compute resources.
     """
 
-    WORKSPACE = '/workspace/sandbox'
+    SANDBOX = '/workspace/common/inline'
+    MIRROR = '/workspace/common/mirror'
 
     def __init__(self, config, client):
         super().__init__(config, client.api)
@@ -52,18 +53,17 @@ class InlineVIXI(Runtime):
         vixi.delta.Delta(
             self._client, attrs['parent'], task
         ).run(
-            self.WORKSPACE
+            self.SANDBOX, self.MIRROR,
         )
         self._api.task.complete(task.id)
 
     def _run_bisect(self, task: Task):
         attrs = task.attributes.to_dict()
-        with tempfile.TemporaryDirectory() as artifacts:
-            vixi.bisect.Bisection(
-                self._client, attrs['delta'], task
-            ).run(
-                self.WORKSPACE, artifacts,
-            )
+        vixi.bisect.Bisection(
+            self._client, attrs['delta'], task
+        ).run(
+            self.SANDBOX, self.MIRROR,
+        )
         self._api.task.complete(task.id)
 
 

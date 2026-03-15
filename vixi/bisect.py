@@ -6,6 +6,7 @@
 
 import os
 import re
+import tempfile
 
 from renelick.client import (
     NewNode as Node,
@@ -173,12 +174,14 @@ class Bisection:
             }),
         ))
 
-    def run(self, sandbox, artifacts):
+    def run(self, sandbox, mirror):
         print(f"Test:     {self._data['root']}:{self._delta.name}")
         revspec = {key: self._new[revkey] for (key, revkey) in [
             ('tree', 'tree'), ('url', 'url'), ('rev', 'sha1'),
         ]}
-        cwd = kbuild.checkout(sandbox, 'src/bisect', revspec, gitonly=True)
+        cwd = kbuild.checkout(
+            sandbox, mirror, 'src/bisect', revspec, gitonly=True
+        )
         print(f"Checking bad revision: {self._new['describe']}")
         self._event({'check': 'bad', 'sha1': self._new['sha1']})
         if not self._check(self._new, False):
@@ -196,7 +199,8 @@ class Bisection:
         ] + history
         result = self._add_result_node(sha1, history)
         print(f'{result.id}  {result.name}')
-        log = self._upload_log(cwd, artifacts, result)
+        with tempfile.TemporaryDirectory(dir=sandbox) as artifacts:
+            log = self._upload_log(cwd, artifacts, result)
         print(log.data['url'])
         return result
 
@@ -207,7 +211,7 @@ if __name__ == '__main__':
     client = ExtendedClient()
     delta_id = sys.argv[1] if len(sys.argv) > 1 else '6946d7fd2a7e93d186fe1c3f'
     result = Bisection(client, delta_id, None).run(
-        os.path.join('/workspace/sandbox'), '/tmp'
+        '/workspace/common/inline', '/workspace/common/mirror',
     )
 
     if result:

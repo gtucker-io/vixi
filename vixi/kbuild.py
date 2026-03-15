@@ -126,7 +126,7 @@ def dump_info(base):
             print(f"  {key.lower():12s}  {value}")
 
 
-def checkout(sandbox, path, revspec, clean=False, gitonly=False):
+def checkout(sandbox, mirror, path, revspec, clean=False, gitonly=False):
     """Initialise or update a kernel checkout"""
     tree, url, rev = (revspec[key] for key in ('tree', 'url', 'rev'))
     print(f"Tree:     {tree}")
@@ -141,7 +141,7 @@ def checkout(sandbox, path, revspec, clean=False, gitonly=False):
         shx(f'rm -rf {cwd}')
     if not os.path.exists(cwd):
         shx(f'mkdir -p {cwd}')
-        mirror = os.path.join(sandbox, 'mirror', f'{tree}.git')
+        mirror = os.path.join(mirror, f'{tree}.git')
         print(f"New checkout, mirror: {mirror}", flush=True)
         opts = '--bare' if gitonly else ''
         shx(f'git clone -v --reference-if-able={mirror} {opts} {url} {cwd}')
@@ -248,7 +248,7 @@ def _gather_revision(opt, cwd):
     }
 
 
-def env_checkout(base, sandbox):
+def env_checkout(base, sandbox, mirror):
     """Initialise a kernel checkout using environment variables"""
     opt, _ = _load_opt(base)
     path = os.path.join('src', opt['JOB'])
@@ -263,7 +263,7 @@ def env_checkout(base, sandbox):
     rev_path = os.path.join(base, 'revision.json')
     with open(rev_path, 'w', encoding='utf-8') as rev_file:
         json.dump(revspec, rev_file)
-    cwd = checkout(sandbox, path, revspec, 'clean' in flags)
+    cwd = checkout(sandbox, mirror, path, revspec, 'clean' in flags)
     rev = _gather_revision(opt, cwd)
     with open(rev_path, 'w', encoding='utf-8') as rev_file:
         json.dump(rev, rev_file)
