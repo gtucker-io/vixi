@@ -20,6 +20,11 @@ DEPLOY_KBOOT=
 echo "Options: ${OPTS}"
 
 for opt in ${OPTS}; do
+    key=$(echo ${opt} | cut -s -d= -f1)
+    [ -n "${key}" ] && {
+        value=$(echo ${opt} | cut -s -d= -f2)
+        opt="${key}"
+    }
     case "${opt}" in
         orchestrator)
             DEPLOY_ORCHESTRATOR=yes
@@ -35,10 +40,14 @@ for opt in ${OPTS}; do
             DEPLOY_TEKTON=yes
             DEPLOY_KBUILD=yes
             DEPLOY_MIRROR=yes
+            KBUILD_SLOTS="${value:-1}"
+            let KBUILD_SLOTS--
             ;;
         sched-tekton-kvm)
             DEPLOY_TEKTON=yes
             DEPLOY_KBOOT=yes
+            KBOOT_SLOTS="${value:-1}"
+            let KBOOT_SLOTS--
             ;;
         *)
             echo "Unknown option: ${opt}, aborting"
@@ -124,7 +133,19 @@ kubectl wait --for=condition=complete --timeout=15m job init-common
 echo -e "\nInitialising resources..."
 [ -n "${DEPLOY_MIRROR}" ] && kubectl create -f k8s/init-mirror.yaml
 [ -n "${DEPLOY_KBOOT}" ] && kubectl create -f tekton/kboot-init.yaml
-[ -n "${DEPLOY_KBUILD}" ] && kubectl apply -f k8s/sandbox.yaml
+[ -n "${DEPLOY_KBUILD}" ] && {
+    for n in $(seq 0 ${KBUILD_SLOTS}); do
+        cat k8s/sandbox/sandbox-pvc-template.json \
+            | sed s/'SLOT'/"${n}"/g \
+        > k8s/sandbox/sandbox-pvc.json
+        cat k8s/sandbox/sandbox-job-template.json \
+            | sed s/'SLOT'/"${n}"/g \
+        > k8s/sandbox/sandbox-job.json
+        kubectl apply -k k8s/sandbox
+    done
+}
+rm -f k8s/sandbox/sandbox-pvc.json
+rm -f k8s/sandbox/sandbox-job.json
 
 jobs=$(kubectl get job -o name | grep 'init-sandbox') || true
 [ -n "$jobs" ] && {
@@ -136,7 +157,6 @@ jobs=$(kubectl get job -o name | grep 'init-mirror') || true
     echo "Waiting for mirror init jobs to complete..."
     kubectl wait --for=condition=complete --timeout=60m $jobs
 }
-
 tasks=$(kubectl get taskrun -o name | grep 'init-kboot') || true
 [ -n "$tasks" ] && {
     echo "Waiting for init tasks to complete..."
@@ -162,11 +182,24 @@ echo -e "\nDeploying services..."
     kubectl apply -f k8s/sched-inline.yaml
 }
 [ -n "${DEPLOY_KBUILD}" ] && {
-    kubectl apply -f k8s/sched-tekton.yaml
+    for n in $(seq 0 ${KBUILD_SLOTS}); do
+        cat k8s/sched-tekton/sched-tekton-template.json \
+            | sed s/'SLOT'/"${n}"/g \
+            | sed s/'SCHED'/'tekton'/g \
+        > k8s/sched-tekton/sched-tekton-args.json
+        kubectl apply -k k8s/sched-tekton
+    done
 }
 [ -n "${DEPLOY_KBOOT}" ] && {
-    kubectl apply -f k8s/sched-tekton-kvm.yaml
+    for n in $(seq 0 ${KBOOT_SLOTS}); do
+        cat k8s/sched-tekton/sched-tekton-template.json \
+            | sed s/'SLOT'/"${n}"/g \
+            | sed s/'SCHED'/'tekton-kvm'/g \
+        > k8s/sched-tekton/sched-tekton-args.json
+        kubectl apply -k k8s/sched-tekton
+    done
 }
+rm -f k8s/sched-tekton/sched-tekton-args.json
 
 deploy=$(kubectl get deploy -o name) || true
 [ -n "$deploy" ] && {
