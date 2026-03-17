@@ -1,0 +1,17 @@
+[
+  {
+    "op": "replace",
+    "path": "/metadata/name",
+    "value": "sched-SCHED-SLOT"
+  },
+  {
+    "op": "replace",
+    "path": "/spec/template/spec/containers/0/command/4",
+    "value": "SCHED"
+  },
+  {
+    "op": "replace",
+    "path": "/spec/template/spec/containers/0/command/6",
+    "value": "SLOT"
+  }
+]

@@ -1,0 +1,17 @@
+[
+  {
+    "op": "replace",
+    "path": "/metadata/name",
+    "value": "init-sandbox-SLOT"
+  },
+  {
+    "op": "replace",
+    "path": "/spec/template/metadata/name",
+    "value": "init-sandbox-SLOT"
+  },
+  {
+    "op": "replace",
+    "path": "/spec/template/spec/volumes/0/persistentVolumeClaim/claimName",
+    "value": "sandbox-SLOT"
+  }
+]

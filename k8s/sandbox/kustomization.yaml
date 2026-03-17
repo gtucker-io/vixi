@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2026 Guillaume Tucker
+
+resources:
+- sandbox.yaml
+
+patches:
+- target:
+    version: v1
+    kind: PersistentVolumeClaim
+    name: sandbox
+  path: sandbox-pvc.json
+- target:
+    group: batch
+    version: v1
+    kind: Job
+    name: init-sandbox
+  path: sandbox-job.json

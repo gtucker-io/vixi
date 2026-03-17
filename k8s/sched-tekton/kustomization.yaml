@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2026 Guillaume Tucker
+
+resources:
+- sched-tekton.yaml
+
+patches:
+- target:
+    group: apps
+    version: v1
+    kind: Deployment
+    name: sched-tekton
+  path: sched-tekton-args.json
