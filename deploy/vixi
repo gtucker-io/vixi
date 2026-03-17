@@ -91,7 +91,7 @@ deployments=$(kubectl get deploy -o name | grep -v el-) || true
     echo "Deleting old deployments..."
     kubectl delete $deployments
 }
-jobs=$(kubectl get job -o name | grep  -e 'init-\(sandbox\|mirror\)') || true
+jobs=$(kubectl get job -o name | grep  -e 'init-\(common\|mirror\)') || true
 [ -n "$jobs" ] && {
     echo "Deleting stale init jobs..."
     kubectl delete $jobs
@@ -102,9 +102,9 @@ tasks=$(kubectl get taskrun -o name | grep 'init-kboot') || true
     kubectl delete $tasks
 }
 
-echo -e "\nDeploying sandbox..."
-kubectl apply -f k8s/sandbox.yaml
-kubectl wait --for=condition=complete --timeout=15m job init-sandbox
+echo -e "\nDeploying common volume..."
+kubectl apply -f k8s/common.yaml
+kubectl wait --for=condition=complete --timeout=15m job init-common
 
 [ -n "${DEPLOY_TEKTON}" ] && {
     echo -e "\nDeploying Tekton resources..."
@@ -124,10 +124,16 @@ kubectl wait --for=condition=complete --timeout=15m job init-sandbox
 echo -e "\nInitialising resources..."
 [ -n "${DEPLOY_MIRROR}" ] && kubectl create -f k8s/init-mirror.yaml
 [ -n "${DEPLOY_KBOOT}" ] && kubectl create -f tekton/kboot-init.yaml
+[ -n "${DEPLOY_KBUILD}" ] && kubectl apply -f k8s/sandbox.yaml
 
+jobs=$(kubectl get job -o name | grep 'init-sandbox') || true
+[ -n "$jobs" ] && {
+    echo "Waiting for sandbox init jobs to complete..."
+    kubectl wait --for=condition=complete --timeout=60m $jobs
+}
 jobs=$(kubectl get job -o name | grep 'init-mirror') || true
 [ -n "$jobs" ] && {
-    echo "Waiting for init jobs to complete..."
+    echo "Waiting for mirror init jobs to complete..."
     kubectl wait --for=condition=complete --timeout=60m $jobs
 }
 
