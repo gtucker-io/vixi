@@ -20,10 +20,10 @@ spec:
               values: ["true"]
   timeout: "2h0m0s"
   workspaces:
-  - name: sandbox
+  - name: common
     persistentVolumeClaim:
-      claimName: sandbox
-  - name: tmp
+      claimName: common
+  - name: scratch
     emptyDir: {}
   params:
   - {name: uuid,       value: ''}

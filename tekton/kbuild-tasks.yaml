@@ -9,8 +9,8 @@ metadata:
   namespace: vixi
 spec:
   workspaces:
-  - name: sandbox
-  - name: tmp
+  - name: common
+  - name: scratch
   params:
   - name: uuid
   - name: tree
@@ -23,7 +23,7 @@ spec:
   steps:
   - name: mirror
     image: alpine/git:v2.49.1
-    workingDir: $(workspaces.sandbox.path)/mirror
+    workingDir: $(workspaces.common.path)/mirror
     securityContext:
       runAsNonRoot: true
       runAsUser: 1000
@@ -35,7 +35,7 @@ spec:
       #!/usr/bin/env ash
       set -eo pipefail
 
-      date -Iseconds > "$(workspaces.tmp.path)/mirror-start"
+      date -Iseconds > "$(workspaces.scratch.path)/mirror-start"
 
       tree="${TREE}"
       url="${URL}"
@@ -79,13 +79,13 @@ spec:
       git log -n1
       du -hs
       cd - >/dev/null
-      df -h $(workspaces.sandbox.path)
-      date -Iseconds > "$(workspaces.tmp.path)/mirror-end"
+      df -h $(workspaces.common.path)/mirror
+      date -Iseconds > "$(workspaces.scratch.path)/mirror-end"
 
   - name: mirror-node
     image: registry.gitlab.com/gtucker.io/renelick:main
     imagePullPolicy: Always
-    workingDir: $(workspaces.sandbox.path)/mirror
+    workingDir: $(workspaces.common.path)/mirror
     volumeMounts:
     - name: api-key
       mountPath: /home/renelick/.config/renelick
@@ -94,9 +94,9 @@ spec:
     - { name: TREE,       value: $(params.tree)                  }
     - { name: URL,        value: $(params.url)                   }
     script: |
-      #!$(workspaces.sandbox.path)/venv/bin/python
+      #!$(workspaces.common.path)/venv/bin/python
       import vixi.kbuild
-      node = vixi.kbuild.mirror_node('$(workspaces.tmp.path)')
+      node = vixi.kbuild.mirror_node('$(workspaces.scratch.path)')
       vixi.complete()
       print(node.id)
 ---
@@ -131,7 +131,7 @@ spec:
     secret:
       secretName: api-key
   workspaces:
-  - name: sandbox
+  - name: common
   - name: artifacts
   steps:
   - name: init
@@ -157,12 +157,11 @@ spec:
     - { name: CCVER,      value: $(params.ccver)                 }
     - { name: CCARCH,     value: $(params.ccarch)                }
     script: |
-      #!$(workspaces.sandbox.path)/venv/bin/python
+      #!$(workspaces.common.path)/venv/bin/python
       import vixi.kbuild
-      artifacts = '$(workspaces.artifacts.path)'
-      vixi.kbuild.save_env(artifacts)
-      vixi.kbuild.save_params(artifacts)
-      vixi.kbuild.dump_info(artifacts)
+      vixi.kbuild.save_env('$(workspaces.artifacts.path)')
+      vixi.kbuild.save_params('$(workspaces.artifacts.path)')
+      vixi.kbuild.dump_info('$(workspaces.artifacts.path)')
 ---
 
 apiVersion: tekton.dev/v1
@@ -172,6 +171,7 @@ metadata:
   namespace: vixi
 spec:
   workspaces:
+  - name: common
   - name: sandbox
   - name: artifacts
   steps:
@@ -189,17 +189,18 @@ spec:
 
       . $(workspaces.artifacts.path)/source.env
       . $(workspaces.artifacts.path)/params.env
-      MIRROR="$(workspaces.sandbox.path)/mirror/${TREE}.git"
+      MIRROR="$(workspaces.common.path)/mirror/${TREE}.git"
       EXEC="${STEP}"-script
       mkdir "${STEP}"
       cd "${STEP}"
 
       cat >"${EXEC}" <<EOF
-      #!$(workspaces.sandbox.path)/venv/bin/python
+      #!$(workspaces.common.path)/venv/bin/python
       import vixi.kbuild
       vixi.kbuild.env_checkout(
           '$(workspaces.artifacts.path)',
           '$(workspaces.sandbox.path)',
+          '$(workspaces.common.path)/mirror',
       )
       EOF
 
@@ -313,6 +314,7 @@ spec:
     secret:
       secretName: api-key
   workspaces:
+  - name: common
   - name: sandbox
   - name: artifacts
 
@@ -353,7 +355,7 @@ spec:
     - { name: PARENT,      value: $(params.parent)                }
     - { name: STEP,        value: $(params.step)                  }
     script: |
-      #!$(workspaces.sandbox.path)/venv/bin/python
+      #!$(workspaces.common.path)/venv/bin/python
       import sys
       import vixi.kbuild
       node = vixi.kbuild.add_result_node('$(workspaces.artifacts.path)')
@@ -379,7 +381,7 @@ spec:
     secret:
       secretName: api-key
   workspaces:
-  - name: sandbox
+  - name: common
   - name: artifacts
   steps:
   - name: summary
@@ -391,7 +393,7 @@ spec:
     env:
     - { name: UUID, value: $(params.uuid) }
     script: |
-      #!$(workspaces.sandbox.path)/venv/bin/python
+      #!$(workspaces.common.path)/venv/bin/python
       import vixi.kbuild
       vixi.write_string(
           '$(workspaces.artifacts.path)/result', '$(params.status)'

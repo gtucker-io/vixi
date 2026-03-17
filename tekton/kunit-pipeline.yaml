@@ -9,6 +9,7 @@ metadata:
   namespace: vixi
 spec:
   workspaces:
+  - name: common
   - name: sandbox
   - name: artifacts
   steps:
@@ -27,17 +28,18 @@ spec:
 
       . $(workspaces.artifacts.path)/source.env
       . $(workspaces.artifacts.path)/params.env
-      MIRROR="$(workspaces.sandbox.path)/mirror/${TREE}.git"
+      MIRROR="$(workspaces.common.path)/mirror/${TREE}.git"
       EXEC="${STEP}"-script
       mkdir "${STEP}"
       cd "${STEP}"
 
       cat >"${EXEC}" <<EOF
-      #!$(workspaces.sandbox.path)/venv/bin/python
+      #!$(workspaces.common.path)/venv/bin/python
       import vixi.kbuild
       vixi.kbuild.env_checkout(
           '$(workspaces.artifacts.path)',
           '$(workspaces.sandbox.path)',
+          '$(workspaces.common.path)/mirror',
       )
       EOF
 
@@ -131,9 +133,9 @@ spec:
   - { name: job,        default: 'kunit'                             }
   - { name: flags,      default: ''                                  }
   workspaces:
+  - name: common
   - name: sandbox
   - name: artifacts
-  - name: scratch
   tasks:
 
   # ---------------------------------------------------------------------------
@@ -143,7 +145,7 @@ spec:
     taskRef:
       name: kbuild-init
     workspaces:
-    - name: sandbox
+    - name: common
     - name: artifacts
     params:
     - { name: job,        value: $(params.job)        }
@@ -171,6 +173,7 @@ spec:
     taskRef:
       name: kunit-scripts
     workspaces:
+    - name: common
     - name: sandbox
     - name: artifacts
 
@@ -184,6 +187,7 @@ spec:
     taskRef:
       name: step-run
     workspaces:
+    - name: common
     - name: sandbox
     - name: artifacts
     params:
@@ -236,7 +240,7 @@ spec:
       - name: uuid
       - name: status
       workspaces:
-      - name: sandbox
+      - name: common
       - name: artifacts
       steps:
       - name: summary
@@ -248,7 +252,7 @@ spec:
         env:
         - { name: UUID, value: $(params.uuid) }
         script: |
-          #!$(workspaces.sandbox.path)/venv/bin/python
+          #!$(workspaces.common.path)/venv/bin/python
           import vixi.kbuild
           vixi.write_string(
               '$(workspaces.artifacts.path)/result', '$(params.status)'

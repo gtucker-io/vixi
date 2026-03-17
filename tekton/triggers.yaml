@@ -83,6 +83,10 @@ spec:
                   values: ["true"]
       timeout: "1h0m0s"
       workspaces:
+      - name: common
+        readOnly: true
+        persistentVolumeClaim:
+          claimName: common
       - name: sandbox
         persistentVolumeClaim:
           claimName: sandbox
@@ -94,8 +98,6 @@ spec:
             resources:
               requests:
                 storage: 1Gi
-      - name: scratch
-        emptyDir: {}
       params:
       - {name: uuid,       value: $(tt.params.uuid)}
       - {name: storage,    value: $(tt.params.storage)}
@@ -273,6 +275,10 @@ spec:
                   values: ["true"]
       timeout: "1h0m0s"
       workspaces:
+      - name: common
+        readOnly: true
+        persistentVolumeClaim:
+          claimName: common
       - name: sandbox
         persistentVolumeClaim:
           claimName: sandbox
@@ -284,8 +290,6 @@ spec:
             resources:
               requests:
                 storage: 1Gi
-      - name: scratch
-        emptyDir: {}
       params:
       - {name: uuid,       value: $(tt.params.uuid)}
       - {name: storage,    value: $(tt.params.storage)}

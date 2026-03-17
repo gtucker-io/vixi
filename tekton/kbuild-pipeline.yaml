@@ -25,9 +25,9 @@ spec:
   - { name: job,        default: 'kbuild'                            }
   - { name: flags,      default: ''                                  }
   workspaces:
+  - name: common
   - name: sandbox
   - name: artifacts
-  - name: scratch
   tasks:
 
   # ---------------------------------------------------------------------------
@@ -37,7 +37,7 @@ spec:
     taskRef:
       name: kbuild-init
     workspaces:
-    - name: sandbox
+    - name: common
     - name: artifacts
     params:
     - { name: job,        value: $(params.job)        }
@@ -64,6 +64,7 @@ spec:
     taskRef:
       name: kbuild-scripts
     workspaces:
+    - name: common
     - name: sandbox
     - name: artifacts
 
@@ -77,6 +78,7 @@ spec:
     taskRef:
       name: step-run
     workspaces:
+    - name: common
     - name: sandbox
     - name: artifacts
     params:
@@ -137,7 +139,7 @@ spec:
     taskRef:
       name: kbuild-result
     workspaces:
-    - name: sandbox
+    - name: common
     - name: artifacts
     params:
     - { name: uuid,        value: $(params.uuid)                            }
