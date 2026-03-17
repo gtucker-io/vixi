@@ -1,0 +1,74 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2024, 2025 Guillaume Tucker
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: common
+  namespace: vixi
+spec:
+  accessModes:
+  - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 100Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-common
+  namespace: vixi
+spec:
+  activeDeadlineSeconds: 300
+  ttlSecondsAfterFinished: 60
+  completions: 1
+  parallelism: 1
+  template:
+    metadata:
+      name: init-common
+    spec:
+      restartPolicy: Never
+      volumes:
+      - name: common
+        persistentVolumeClaim:
+          claimName: common
+      initContainers:
+      - name: directories
+        image: alpine:3.22.1
+        volumeMounts:
+        - name: common
+          mountPath: /common
+        command:
+        - 'ash'
+        - '-c'
+        - |
+          set -eo pipefail
+          install -d /common/mirror -o 1000 -m 0755
+          install -d /common/inline -o 1000 -m 0755
+          ls -l /common
+
+      containers:
+      - name: venv
+        image: python:3.10
+        volumeMounts:
+        - name: common
+          mountPath: /workspace/common
+        workingDir: /workspace/common
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+        command:
+        - '/usr/bin/env'
+        - 'bash'
+        - '-c'
+        - |
+          set -eo pipefail
+          python -m venv --system-site-packages venv
+          (
+              . venv/bin/activate
+              pip install --upgrade pip
+              pip uninstall -y vixi
+              pip install git+https://gitlab.com/gtucker.io/vixi.git@main
+          )

@@ -30,9 +30,9 @@ spec:
       - name: api-key
         secret:
           secretName: api-key
-      - name: sandbox
+      - name: common
         persistentVolumeClaim:
-          claimName: sandbox
+          claimName: common
       containers:
       - name: scheduler
         image: registry.gitlab.com/gtucker.io/renelick:main
@@ -40,7 +40,7 @@ spec:
         volumeMounts:
         - name: api-key
           mountPath: /home/renelick/.config/renelick
-        - name: sandbox
-          mountPath: /workspace/sandbox
+        - name: common
+          mountPath: /workspace/common
         # ToDo: add labels, also make the API filter based on the username
-        command: ['/workspace/sandbox/venv/bin/python', '-m', 'vixi.inline']
+        command: ['/workspace/common/venv/bin/python', '-m', 'vixi.inline']

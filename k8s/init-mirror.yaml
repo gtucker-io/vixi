@@ -18,16 +18,16 @@ spec:
     spec:
       restartPolicy: Never
       volumes:
-      - name: sandbox
+      - name: common
         persistentVolumeClaim:
-          claimName: sandbox
+          claimName: common
       containers:
       - name: linux-mirror
         image: alpine/curl:8.14.1
         volumeMounts:
-        - name: sandbox
-          mountPath: /sandbox
-        workingDir: /sandbox/mirror
+        - name: common
+          mountPath: /common
+        workingDir: /common/mirror
         securityContext:
           runAsNonRoot: true
           runAsUser: 1000

@@ -34,7 +34,7 @@ spec:
       - name: sandbox
         persistentVolumeClaim:
           claimName: sandbox
-      initContainers:
+      containers:
       - name: directories
         image: alpine:3.22.1
         volumeMounts:
@@ -45,30 +45,5 @@ spec:
         - '-c'
         - |
           set -eo pipefail
-          install -d /sandbox/mirror -o 1000 -m 0755
           install -d /sandbox/src -o 1000 -m 0755
           ls -l /sandbox
-
-      containers:
-      - name: venv
-        image: python:3.10
-        volumeMounts:
-        - name: sandbox
-          mountPath: /workspace/sandbox
-        workingDir: /workspace/sandbox
-        securityContext:
-          runAsNonRoot: true
-          runAsUser: 1000
-        command:
-        - '/usr/bin/env'
-        - 'bash'
-        - '-c'
-        - |
-          set -eo pipefail
-          python -m venv --system-site-packages venv
-          (
-              . venv/bin/activate
-              pip install --upgrade pip
-              pip uninstall -y vixi
-              pip install git+https://gitlab.com/gtucker.io/vixi.git@main
-          )

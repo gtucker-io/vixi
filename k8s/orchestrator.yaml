@@ -30,9 +30,9 @@ spec:
       - name: api-key
         secret:
           secretName: api-key
-      - name: sandbox
+      - name: common
         persistentVolumeClaim:
-          claimName: sandbox
+          claimName: common
       initContainers:
       - name: oconfig
         image: registry.gitlab.com/gtucker.io/renelick:main
@@ -40,10 +40,10 @@ spec:
         volumeMounts:
         - name: api-key
           mountPath: /home/renelick/.config/renelick
-        - name: sandbox
-          mountPath: /sandbox
+        - name: common
+          mountPath: /common
         command:
-        - '/sandbox/venv/bin/python'
+        - '/common/venv/bin/python'
         - '-m'
         - 'vixi.oconfig'
         - '--verbose'
@@ -58,6 +58,6 @@ spec:
         volumeMounts:
         - name: api-key
           mountPath: /home/renelick/.config/renelick
-        - name: sandbox
-          mountPath: /sandbox
-        command: ['/sandbox/venv/bin/python', '-m', 'vixi.orchestrator']
+        - name: common
+          mountPath: /common
+        command: ['/common/venv/bin/python', '-m', 'vixi.orchestrator']
