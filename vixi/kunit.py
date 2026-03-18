@@ -14,13 +14,6 @@ from renelick.client import (
 )
 
 
-RESULT_MAP = {
-    'PASS': 'pass',
-    'FAIL': 'fail',
-    'SKIP': 'skip',
-}
-
-
 def _parse_results(api, group, root, path):
     branches = []
     for test_case in group.get('test_cases', []):
@@ -31,7 +24,7 @@ def _parse_results(api, group, root, path):
             task=root.task,
             data=Data.from_dict({
                 'path': list(path + (test_name,)),
-                'result': RESULT_MAP[test_case['status']],
+                'result': test_case['status'].lower(),
             }),
         )))
     for sub_group in group.get('sub_groups', []):
