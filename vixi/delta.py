@@ -175,8 +175,11 @@ class Delta:
         cwd = kbuild.checkout(sandbox, 'src/delta', revspec, gitonly=True)
         base_sha1 = self._get_base_sha1(cwd, kbuild.TORVALDS, 'master')
         base_node = self._get_base(base_sha1) or self._make_base(base_sha1)
+        print(f"Base node: {base_node.id}")
         base = Results(self._api, base_node)
-        return self.compare(base)
+        diff = self.compare(base)
+        print(f"Breaking: {len(diff[2])}")
+        return diff
 
 
 if __name__ == '__main__':
