@@ -264,8 +264,9 @@ the build completes.
 
 ## Demo time
 
-A number of demos are provided to showcase how this all fits together:
+A number of static demos are available to showcase how this all fits together:
 
 1. [From Git to KUnit](/docs/demo-1-git-to-kunit/index.md)
 1. [Delta and Git bisect](/docs/demo-2-delta-and-git-bisect/index.md)
 1. [Automated replay](/docs/demo-3-automated-replay/index.md)
+1. [Applying patch files](/docs/demo-4-patch-files/index.md)
