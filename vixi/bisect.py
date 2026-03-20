@@ -180,7 +180,7 @@ class Bisection:
             ('tree', 'tree'), ('url', 'url'), ('rev', 'sha1'),
         ]}
         cwd = kbuild.checkout(
-            sandbox, mirror, 'src/bisect', revspec, gitonly=True
+            sandbox, mirror, 'src', revspec, gitonly=True
         )
         print(f"Checking bad revision: {self._new['describe']}")
         self._event({'check': 'bad', 'sha1': self._new['sha1']})
@@ -199,6 +199,7 @@ class Bisection:
         ] + history
         result = self._add_result_node(sha1, history)
         print(f'{result.id}  {result.name}')
+        # This happens to create a tempdir within a tempdir, which is fine.
         with tempfile.TemporaryDirectory(dir=sandbox) as artifacts:
             log = self._upload_log(cwd, artifacts, result)
         print(log.data['url'])
@@ -211,7 +212,7 @@ if __name__ == '__main__':
     client = ExtendedClient()
     delta_id = sys.argv[1] if len(sys.argv) > 1 else '6946d7fd2a7e93d186fe1c3f'
     result = Bisection(client, delta_id, None).run(
-        '/workspace/common/inline', '/workspace/common/mirror',
+        '/workspace/common/inline/hack-bisect', '/workspace/common/mirror',
     )
 
     if result:

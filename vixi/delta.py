@@ -173,7 +173,7 @@ class Delta:
             ('tree', 'tree'), ('url', 'url'), ('rev', 'sha1'),
         ]}
         cwd = kbuild.checkout(
-            sandbox, mirror, 'src/delta', revspec, gitonly=True
+            sandbox, mirror, 'src', revspec, gitonly=True
         )
         base_sha1 = self._get_base_sha1(cwd, kbuild.TORVALDS, 'master')
         base_node = self._get_base(base_sha1) or self._make_base(base_sha1)
@@ -190,7 +190,7 @@ if __name__ == '__main__':
     root = sys.argv[1] if len(sys.argv) > 1 else '6946874e2a7e93d186fde207'
     client = ExtendedClient(verbose=True)
     _, _, breaking = Delta(client, root, None).run(
-        '/workspace/common/inline', '/workspace/common/mirror',
+        '/workspace/common/inline/hack-delta', '/workspace/common/mirror',
     )
 
     for delta in breaking:

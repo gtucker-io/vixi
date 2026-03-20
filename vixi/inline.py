@@ -25,9 +25,10 @@ class InlineVIXI(Runtime):
     SANDBOX = '/workspace/common/inline'
     MIRROR = '/workspace/common/mirror'
 
-    def __init__(self, config, client):
+    def __init__(self, config, client, sandbox):
         super().__init__(config, client.api)
         self._client = client
+        self._sandbox = sandbox
 
     def run_task(self, task: Task):
         func = getattr(
@@ -53,7 +54,7 @@ class InlineVIXI(Runtime):
         vixi.delta.Delta(
             self._client, attrs['parent'], task
         ).run(
-            self.SANDBOX, self.MIRROR,
+            self._sandbox, self.MIRROR,
         )
         self._api.task.complete(task.id)
 
@@ -62,7 +63,7 @@ class InlineVIXI(Runtime):
         vixi.bisect.Bisection(
             self._client, attrs['delta'], task
         ).run(
-            self.SANDBOX, self.MIRROR,
+            self._sandbox, self.MIRROR,
         )
         self._api.task.complete(task.id)
 
@@ -70,5 +71,6 @@ class InlineVIXI(Runtime):
 if __name__ == '__main__':
     client = ExtendedClient()
     config = RuntimeConfig(name='inline-vixi', driver='inline-vixi')
-    runtime = InlineVIXI(config, client)
-    SimpleScheduler(runtime, client.api).loop()
+    with tempfile.TemporaryDirectory(dir=InlineVIXI.SANDBOX) as sandbox:
+        runtime = InlineVIXI(config, client, sandbox)
+        SimpleScheduler(runtime, client.api).loop()
