@@ -84,6 +84,59 @@ Renelick is the underlying distributed task orchestration framework ([docs](http
 - **Channels**: Pub/sub event streams (`node`, `task`, `vixi`)
 - `ExtendedClient` in `base.py` wraps the Renelick client with VIXI-specific helpers (task replay, history tracking, node searching)
 
+## Contributing
+
+### Claude Code as a contributor
+
+The `gtucker-claude` GitLab account is owned by Guillaume Tucker but used exclusively by Claude Code to produce commits. This places Claude Code as a contributor in its own right, on the same footing as any other contributor, with the account owner providing oversight and sign-off. Other contributors (human or otherwise) use their own accounts and should not use this account.
+
+### Commit trailers
+
+Every commit must include both trailers:
+
+```
+Signed-off-by: Guillaume Tucker <gtucker@gtucker.io>
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
+```
+
+`Signed-off-by` follows the [Linux kernel DCO convention](https://docs.kernel.org/process/submitting-patches.html#sign-your-work-the-developer-s-certificate-of-origin), certifying that the account owner has reviewed the work and it is compatible with the MIT licence. `Co-Authored-By` identifies Claude Code as the author of the changes.
+
+### Merge requests
+
+Branches are pushed to the `gtucker-claude` fork from a local clone via SSH. A GitLab API token is required for all MR operations; it is stored in the `glab` config and covers both the fork and the [upstream repository](https://gitlab.com/gtucker.io/vixi), but does not grant push access to either.
+
+#### Creating a merge request
+
+For MRs within the fork, `glab mr create` can be used as normal. For MRs from the fork to the upstream, `glab mr create` does not currently support cross-project MRs, so use the GitLab API instead, posting to the **fork** endpoint with `target_project_id` set to the upstream project ID:
+
+```bash
+curl --request POST \
+    --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+    --header "Content-Type: application/json" \
+    --data "{\"source_branch\":\"<branch>\",\"target_branch\":\"main\",\"target_project_id\":62306329,\"title\":\"<title>\"}" \
+    "https://gitlab.com/api/v4/projects/81191219/merge_requests"
+```
+
+For single-commit MRs, omit `description` — GitLab auto-fills it from the commit message. For multi-commit MRs, add a `"description"` field summarising the combined changes.
+
+#### Responding to review comments
+
+Review comments are `DiffNote` discussions. Reply to each discussion individually before resolving it:
+
+```bash
+# Reply to a discussion
+curl --request POST \
+    --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+    "https://gitlab.com/api/v4/projects/62306329/merge_requests/:iid/discussions/:discussion_id/notes" \
+    --data "body=<explanation of what was changed>"
+
+# Then resolve it
+curl --request PUT \
+    --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+    "https://gitlab.com/api/v4/projects/62306329/merge_requests/:iid/discussions/:discussion_id" \
+    --data "resolved=true"
+```
+
 ## Git Mirrors and Incremental Builds
 
 Each tree has a read-only mirror PVC shared across all runtime instances. Checkouts use `git clone --reference <mirror>` for speed. Build directories are also persisted per (tree, compiler, arch) combination to enable incremental builds. Clean builds should be triggered explicitly to confirm failures.
