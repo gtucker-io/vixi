@@ -95,11 +95,11 @@ The `gtucker-claude` GitLab account is owned by Guillaume Tucker but used exclus
 Every commit must include both trailers:
 
 ```
+Co-Authored-By: Claude <model-name> <noreply@anthropic.com>
 Signed-off-by: Guillaume Tucker <gtucker@gtucker.io>
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 ```
 
-`Signed-off-by` follows the [Linux kernel DCO convention](https://docs.kernel.org/process/submitting-patches.html#sign-your-work-the-developer-s-certificate-of-origin), certifying that the account owner has reviewed the work and it is compatible with the MIT licence. `Co-Authored-By` identifies Claude Code as the author of the changes.
+Use the actual model name in `Co-Authored-By` to identify which model wrote the commit (e.g. `Claude Sonnet 4.6`, `Claude Opus 4.6`). `Signed-off-by` follows the [Linux kernel DCO convention](https://docs.kernel.org/process/submitting-patches.html#sign-your-work-the-developer-s-certificate-of-origin), certifying that the account owner has reviewed the work and it is compatible with the MIT licence.
 
 ### Merge requests
 
