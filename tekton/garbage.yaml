@@ -57,7 +57,10 @@ spec:
             - /bin/bash
             - -c
             - |
-              TO_DELETE="$(kubectl get pipelinerun -o jsonpath='{.items[?(@.status.completionTime)].metadata.name}')"
+              GRACE=60
+              NOW=$(date -u +%s)
+              TO_DELETE=$(kubectl get pipelinerun -o json | jq -r --argjson now "$NOW" --argjson grace "$GRACE" \
+                '.items[] | select(.status.completionTime) | select(($now - (.status.completionTime | fromdateiso8601)) >= $grace) | .metadata.name')
               if [ -n "$TO_DELETE" ]; then
                 kubectl delete pipelinerun ${TO_DELETE}
               fi
@@ -68,7 +71,10 @@ spec:
             - /bin/bash
             - -c
             - |
-              TO_DELETE=$(kubectl get taskrun -o json | jq -r '.items[] | select(.status.completionTime) | select(.metadata.labels."tekton.dev/pipeline" == null)| select(.metadata.labels."tekton.dev/task").metadata.name')
+              GRACE=60
+              NOW=$(date -u +%s)
+              TO_DELETE=$(kubectl get taskrun -o json | jq -r --argjson now "$NOW" --argjson grace "$GRACE" \
+                '.items[] | select(.status.completionTime) | select(($now - (.status.completionTime | fromdateiso8601)) >= $grace) | select(.metadata.labels."tekton.dev/pipeline" == null) | select(.metadata.labels."tekton.dev/task") | .metadata.name')
               if [ -n "$TO_DELETE" ]; then
                 kubectl delete taskrun ${TO_DELETE}
               fi
