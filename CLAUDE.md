@@ -117,7 +117,7 @@ curl --request POST \
     "https://gitlab.com/api/v4/projects/81191219/merge_requests"
 ```
 
-For single-commit MRs, omit `description` — GitLab auto-fills it from the commit message. For multi-commit MRs, add a `"description"` field summarising the combined changes.
+Always pass `description` explicitly — the raw API does not auto-populate it from the commit message (unlike `glab mr create --fill`). For single-commit MRs, use the commit body as the description. For multi-commit MRs, write a summary of the combined changes.
 
 #### Responding to review comments
 
