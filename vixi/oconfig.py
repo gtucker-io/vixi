@@ -15,8 +15,8 @@ from renelick.client import Client, NewNode as Node, NewNodeData as Data
 
 
 def _get_latest(rk):
-    latest = rk.api.node.find(
-        ['kind=vixi.oconfig', 'created__sort=down'], limit=1
+    latest = rk.api.node.search(
+        ['kind=vixi.oconfig'], sort=['created=down'], limit=1
     )
     return latest[0] if latest else None
 

@@ -38,8 +38,8 @@ class VixiOrchestrator(Subscriber):
     def load_oconfig(self, node=None):
         """Load the orchestrator config from a database node"""
         if node is None:
-            latest = self._api.node.find(
-                ['kind=vixi.oconfig', 'created__sort=down'], limit=1
+            latest = self._api.node.search(
+                ['kind=vixi.oconfig'], sort=['created=down'], limit=1
             )
             if not latest:
                 raise RenelickError("Orchestrator config not found")

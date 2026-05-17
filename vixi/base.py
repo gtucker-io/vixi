@@ -104,7 +104,7 @@ class ExtendedClient(renelick.client.Client):
 
     def find_single_node(self, *fields):
         """Find a single node matching the provided fields"""
-        found = self.api.node.find(fields)
+        found = self.api.node.search(fields)
         if len(found) != 1:
             raise renelick.client.RenelickError(
                 f"Failed to find single node: {fields}, found: {len(found)}"

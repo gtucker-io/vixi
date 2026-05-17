@@ -49,7 +49,7 @@ class Results:
         self.params = self.data['params']
         self.failed = {
             tuple(fail.data.to_dict()['path']): fail
-            for fail in api.node.find([
+            for fail in api.node.search([
                 'kind=vixi.test',
                 f'task.id={self.root.task.id}',
                 'data.result=fail'
@@ -94,15 +94,14 @@ class Delta:
             raise RenelickError("Failed to find base commit") from ex
 
     def _get_base(self, base_sha1):
-        base = self._api.node.find([
+        base = self._api.node.search([
             f"data.params.{key}{'__str' if value[0].isdigit() else ''}={value}"
             for (key, value) in self._res.params.items() if value
         ] + [
             'kind=vixi.group',
             f'name={self._res.root.name}',
             f'data.revision.sha1__str={base_sha1}',
-            'created__sort=down',
-        ], limit=1)
+        ], sort=['created=down'], limit=1)
         return base[0] if base else None
 
     def _make_base(self, base_sha1):
@@ -154,7 +153,7 @@ class Delta:
 
     def _get_breaking(self, base):
         for name in self._res.names.difference(base.names):
-            passed = self._api.node.find([
+            passed = self._api.node.search([
                 f'task.id={base.root.task.id}', f'data.path={list(name)}'
             ])[0]
             failed = self._res.failed[name]

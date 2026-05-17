@@ -326,7 +326,7 @@ def add_results(base, steps, job='kbuild'):
         return None
 
     rk = Client().api
-    parent = rk.node.find([
+    parent = rk.node.search([
         f'kind=vixi.{job}.step', f'task.id={uuid}', f'data.step={complete[-1]}'
     ], limit=1)[0]
     steps = [
