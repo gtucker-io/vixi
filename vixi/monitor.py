@@ -5,7 +5,7 @@
 """VIXI Orchestrator"""
 
 from renelick.client import Client
-from renelick.client.service import Monitor
+from renelick.client.service.monitor import Monitor
 
 
 class VIXIMonitor(Monitor):
