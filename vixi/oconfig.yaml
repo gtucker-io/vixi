@@ -1,16 +1,29 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2025, 2026 Guillaume Tucker
+
 trees:
   gtucker:
     url: https://gitlab.com/gtucker/linux.git
+    branch: vixi
+    period: {minutes: 15}
   kselftest:
     url: https://git.kernel.org/pub/scm/linux/kernel/git/shuah/linux-kselftest.git
+    branch: fixes
   next:
     url: https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git
+    branch: master
+    period: {hours: 3, minutes: 21}
   rust:
     url: https://github.com/Rust-for-Linux/linux.git
+    branch: rust-next
   stable:
     url: https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git
+    branch: linux-6.18.y
   torvalds:
     url: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+    branch: master
+    period: {hours: 2, minutes: 10}
 
 switchboard:
 
