@@ -1,5 +1,6 @@
 *.deb
 *.tar.gz
 secrets
+config
 __pycache__
 k8s/tekton/feature-flags.yaml

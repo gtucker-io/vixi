@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2026 Guillaume Tucker
+
+[default]
+api = "beta"
+user = "vixi"
+
+[api.beta]
+url = "https://beta.renelick.org"
+version = "v1"
+
+[api.beta.user.vixi]
+email = "vixi@renelick.org"
