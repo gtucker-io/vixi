@@ -6,9 +6,6 @@
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.hatch]
-metadata.allow-direct-references = true
-
 [project]
 name = "vixi"
 version = "0.0.1"
@@ -18,11 +15,6 @@ authors = [
 ]
 
 dependencies = [
+  "renelick==1.0.0rc1-post1",
   "unidiff==0.7.5",
-]
-
-[project.optional-dependencies]
-rk = [
-  # This is a hack to avoid installing it again when using the Docker image
-  "renelick[cli]@git+https://gitlab.com/gtucker.io/renelick.git@main",
 ]
