@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: MIT
+#
+# Copyright (C) 2026 Guillaume Tucker
+
+services:
+
+  monitor: &service
+    container_name: '${INSTANCE:-vixi}-monitor'
+    image: '${INSTANCE:-vixi}'
+    build:
+      context: .
+    restart: unless-stopped
+    volumes:
+    - './config/renelick:/home/vixi/.config/renelick'
+    entrypoint: ['python', '-m', 'vixi.monitor']
+
+  orchestrator:
+    <<: *service
+    container_name: '${INSTANCE:-vixi}-orchestrator'
+    entrypoint: ['python', '-m', 'vixi.orchestrator']
