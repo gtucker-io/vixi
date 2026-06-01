@@ -1,14 +1,18 @@
 # SPDX-License-Identifier: MIT
 #
-# Copyright (C) 2025 Guillaume Tucker
+# Copyright (C) 2025, 2026 Guillaume Tucker
 
 """VIXI Orchestrator"""
 
+import asyncio
+import random
 from datetime import datetime, timedelta
-from renelick.client import Client, ServiceConfig
+
+from renelick.client import ServiceConfig
 from renelick.client.api import Task, TaskAttributes
 from renelick.client.exceptions import RenelickError
 from renelick.client.service import Subscriber
+
 from .base import ExtendedClient
 
 
@@ -34,6 +38,7 @@ class VixiOrchestrator(Subscriber):
         super().__init__(client.api, *args, **kwargs)
         self._client = client
         self._oconfig = None
+        self._timers = set()
 
     def load_oconfig(self, node=None):
         """Load the orchestrator config from a database node"""
@@ -47,10 +52,48 @@ class VixiOrchestrator(Subscriber):
         self.log.info(f"Config:     {node.name}")
         self._oconfig = node.data.to_dict()
 
+    async def start_timers(self):
+        for tree, config in self._oconfig['trees'].items():
+            if not config.get('period'):
+                continue
+            timer = asyncio.create_task(self._timer(tree, config), name=tree)
+            self._timers.add(timer)
+            timer.add_done_callback(self._timers.discard)
+
     def show_config(self):
         self.log.info("VIXI Orchestrator")
-        self.load_oconfig()
         super().show_config()
+
+    async def _run(self):
+        self.load_oconfig()
+        await self.start_timers()
+        await super()._run()
+
+    async def _timer(self, tree, config):
+        timeout_spec = {'minutes': 15}
+        delay = int(timedelta(**config['period']).total_seconds())
+        self.log.info(f"Trigger:    {tree:12s} {delay}")
+        try:
+            # Initial random delay up to 5min to check all the trees at startup
+            await asyncio.sleep(random.randint(0, 5 * 60))
+            while True:
+                task = self._api.task.schedule(Task(
+                    name='trigger',
+                    scheduler='inline-vixi',
+                    timeout=datetime.now() + timedelta(**timeout_spec),
+                    attributes=TaskAttributes.from_dict({
+                        'tree': tree,
+                        'url': config['url'],
+                        'branch': config['branch'],
+                        'orch': 'vixi',
+                        'timeout-spec': timeout_spec,
+                    }),
+                ))
+                tag = f"trigger-{tree}"
+                self.log.info(f"{tag:48s}  {task.id}")
+                await asyncio.sleep(delay)
+        except asyncio.CancelledError as ex:
+            raise ex
 
     def _match(self, channel, evdata, spec):
         if spec['channel'] != channel:
@@ -81,7 +124,11 @@ class VixiOrchestrator(Subscriber):
 
     async def _run_oconfig_reload(self, event, _):
         node = self._api.node.get(event['id'])
+        for timer in self._timers:
+            timer.cancel()
+        self._timers = set()
         self.load_oconfig(node)
+        await self.start_timers()
 
     async def _run_kbuild(self, event, scheduler):
         tree, revision = (event[key] for key in ['tree', 'revision'])
