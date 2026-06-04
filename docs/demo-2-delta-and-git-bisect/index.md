@@ -1,9 +1,9 @@
 VIXI Demo No.2 – Delta and Git bisect
 =====================================
 
-Building upon the [first demo](demo-1-git-to-kunit.md), this time we'll start
-looking at some post-processing tasks to detect new test failures and
-automatically find the breaking commit using `git bisect`.  To simplify the
+Building upon the [first demo](../demo-1-git-to-kunit/index.md), this time
+we'll start looking at some post-processing tasks to detect new test failures
+and automatically find the breaking commit using `git bisect`.  To simplify the
 logs, we'll just have the `kbuild` and `kunit` pipelines running and no
 `kboot`.  The automated bisection logic currently only works with KUnit, a
 follow-up demo will showcase how this applies to any test results including
@@ -159,7 +159,7 @@ I  2025-11-20T21:56:37.528562+00:00 TASK   accept        4c35ed94-f399-4e49-93ee
 ```
 
 Here are the relevant orchestrator
-[config](https://gitlab.com/gtucker/vixi/-/blob/main/vixi/oconfig.yaml?ref_type=heads)
+[`config.yaml`](https://gitlab.com/gtucker.io/vixi/-/blob/main/vixi/oconfig.yaml?ref_type=heads)
 entries for `delta` and `bisect`:
 
 ``` yaml

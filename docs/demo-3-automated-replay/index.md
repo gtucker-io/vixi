@@ -1,14 +1,15 @@
 VIXI Demo No.3 – Automated replay
 =================================
 
-In the [previous demo](demo-2-delta-and-git-bisect.md) we saw how the `delta`
-and `bisect` post-processing features can detect differences in test results
-and isolate the commits that caused them.  It was an early proof of concept and
-hard-coded to only work with KUnit.  In this demo, we'll see how the task
-definitions have been improved to be able to replay any sequence of tasks while
-changing some arbitrary parameters.  In particular, the `bisect` logic will now
-automatically discover how to reproduce KUnit results and plain builds with
-different kernel revisions just by inspecting existing data.  Let's dive in!
+In the [previous demo](../demo-2-delta-and-git-bisect/index.md) we saw how the
+`delta` and `bisect` post-processing features can detect differences in test
+results and isolate the commits that caused them.  It was an early proof of
+concept and hard-coded to only work with KUnit.  In this demo, we'll see how
+the task definitions have been improved to be able to replay any sequence of
+tasks while changing some arbitrary parameters.  In particular, the `bisect`
+logic will now automatically discover how to reproduce KUnit results and plain
+builds with different kernel revisions just by inspecting existing data.  Let's
+dive in!
 
 ## Task inputs
 
